@@ -89,17 +89,22 @@
         // ====================================================================
         //                      وحدة المصادقة وإدارة الأدوار (Auth & Roles)       
         // ====================================================================
-
+        
+        /**
+         * تم تعديل هذه الدالة لتقوم دائماً بتسجيل الدخول إما عبر الرمز أو بشكل مجهول
+         * لتخطي شاشة تسجيل الدخول في وضع الاختبار.
+         */
         async function authenticateUser() {
             try {
                 if (initialAuthToken) {
                     await signInWithCustomToken(App.auth, initialAuthToken);
                 } else {
-                    await signInAnonymously(App.auth);
+                    // إجبار التسجيل المجهول لتخطي شاشة تسجيل الدخول
+                    await signInAnonymously(App.auth); 
                 }
             } catch (error) {
-                console.error("خطأ في مصادقة Firebase:", error);
-                App.view = 'login';
+                console.error("خطأ حرج في مصادقة Firebase:", error);
+                App.view = 'auth_error';
                 render();
             }
         }
@@ -114,23 +119,32 @@
                     if (userDoc.exists()) {
                         App.userRole = userDoc.data().role || 'staff';
                     } else {
-                        // مستخدم جديد، يتم تسجيله كـ 'staff' تلقائياً
-                        App.userRole = user.uid === 'initial_admin_uid' ? 'admin' : 'staff'; // محاكاة لتعيين مدير أولي
+                        // تعيين دور 'staff' افتراضي لأي مستخدم جديد يتم تسجيله مجهولاً
+                        App.userRole = 'staff'; 
                         await setDoc(userDocRef, { uid: user.uid, role: App.userRole, createdAt: new Date().toISOString() }, { merge: true });
                     }
 
                     setupFirestoreListeners();
-                    App.view = 'dashboard';
+                    App.view = 'dashboard'; // التوجيه المباشر للوحة التحكم
                 } else {
-                    App.userId = null;
-                    App.view = 'login';
+                    // إذا قام المستخدم بتسجيل الخروج (أصبح null)، يتم إعادة التسجيل المجهول تلقائياً لاستمرارية الاختبار
+                    console.log("User signed out (testing mode), re-authenticating anonymously.");
+                    await signInAnonymously(App.auth);
+                    // لا يتم استدعاء render() هنا، بل يتم استدعاؤها في حلقة أخرى من onAuthStateChanged بعد إعادة التسجيل
                 }
                 render();
             });
         }
         
+        /**
+         * تم تعديل هذه الدالة: عند محاولة تسجيل الخروج، يتم تسجيل الدخول مجهولاً مرة أخرى
+         * للحفاظ على المستخدم في وضع الاختبار.
+         */
         window.handleLogout = () => {
-             signOut(App.auth).then(() => { App.userRole = 'staff'; alertUser("تم تسجيل الخروج بنجاح.", "success"); }).catch(console.error);
+             signOut(App.auth).then(async () => { 
+                alertUser("تم تسجيل الخروج بنجاح. يتم الآن تسجيل الدخول مجهولاً للاستمرار في الاختبار.", "success"); 
+                // onAuthStateChanged سيتكفل بإعادة تسجيل الدخول المجهول
+             }).catch(console.error);
         };
         
         // ====================================================================
@@ -144,28 +158,28 @@
             onSnapshot(collection(App.db, App.getCollectionPath('products')), (snapshot) => {
                 App.data.products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 checkLowStockAlerts();
-                // تم استبدال renderView بـ render() الشرطي لتجنب الخطأ
+                // **تم التصحيح:** استبدال renderView بـ render()
                 if (['products', 'dashboard', 'alerts', 'invoices'].includes(App.view)) render(); 
             }, console.error);
 
             // 2. العملاء (لإدارة العملاء المميزين)
             onSnapshot(collection(App.db, App.getCollectionPath('customers')), (snapshot) => {
                 App.data.customers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // تم استبدال renderView بـ render() الشرطي لتجنب الخطأ
+                // **تم التصحيح:** استبدال renderView بـ render()
                 if (['customers', 'invoices', 'dashboard'].includes(App.view)) render();
             }, console.error);
             
             // 3. الفواتير (للإحصائيات)
             onSnapshot(collection(App.db, App.getCollectionPath('invoices')), (snapshot) => {
                 App.data.invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // تم استبدال renderView بـ render() الشرطي لتجنب الخطأ (الإحصائيات في لوحة التحكم)
+                // **تم التصحيح:** استبدال renderView بـ render()
                 if (['dashboard', 'invoices'].includes(App.view)) render();
             }, console.error);
             
              // 4. المستخدمين (لإعدادات المدير)
             onSnapshot(collection(App.db, App.getCollectionPath('users')), (snapshot) => {
                 App.data.users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // تم استبدال renderView بـ render() الشرطي لتجنب الخطأ
+                // **تم التصحيح:** استبدال renderView بـ render()
                 if (App.view === 'user_settings') render();
             }, console.error);
         }
@@ -338,7 +352,8 @@
         // ====================================================================
 
         function MainLayout() {
-            if (App.view === 'loading' || App.view === 'login') {
+            // تم التعديل: يتم عرض لوحة التحكم مباشرة إذا لم يكن التطبيق في حالة 'تحميل' أو 'خطأ'
+            if (App.view === 'loading' || App.view === 'auth_error') {
                 return App.views[App.view]();
             }
             
@@ -348,9 +363,9 @@
                     <div id="sidebar" class="flex flex-col w-64 bg-white border-l shadow-2xl p-4">
                         <div class="mb-8 text-center">
                             <h1 class="text-3xl font-extrabold text-shahrazad">SHAHRAZAD</h1>
-                            <p class="text-xs text-gray-500">ELECTRIC Sales System</p>
+                            <p class="text-xs text-gray-500">ELECTRIC Sales System (Test Mode)</p>
                             <p class="text-xs text-gray-400 mt-2">الصلاحية: **${App.userRole === 'admin' ? 'المدير الأساسي' : 'موظف مبيعات'}**</p>
-                            <p class="text-xs text-gray-400">UID: ${App.userId.substring(0, 15)}...</p>
+                            <p class="text-xs text-gray-400">UID: ${App.userId ? App.userId.substring(0, 15) + '...' : 'N/A'}</p>
                         </div>
 
                         <!-- عناصر التنقل (Navigation Items) -->
@@ -737,21 +752,15 @@
         
         App.views = {
             loading: () => `<div class="h-screen flex items-center justify-center bg-gray-50"><div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-shahrazad"></div><p class="mr-4 text-xl text-gray-700">جاري تحميل نظام SHAHRAZAD...</p></div>`,
-            login: () => `
-                <div class="min-h-screen flex items-center justify-center p-4 gradient-bg">
-                    <div class="card w-full max-w-lg p-8 space-y-6 shadow-2xl">
+            // تم استبدال شاشة تسجيل الدخول بشاشة خطأ مؤقتة في حال فشل المصادقة
+            auth_error: () => `
+                <div class="min-h-screen flex items-center justify-center p-4 bg-red-100">
+                    <div class="card w-full max-w-lg p-8 space-y-6 shadow-2xl border-t-4 border-red-500">
                         <div class="text-center">
-                            <h1 class="text-4xl font-extrabold text-shahrazad">SHAHRAZAD ELECTRIC</h1>
-                            <p class="text-gray-600 mt-2">نظام إدارة المبيعات المتقدم - يرجى تسجيل الدخول</p>
+                            <h1 class="text-4xl font-extrabold text-red-700">خطأ في المصادقة</h1>
+                            <p class="text-gray-600 mt-2">عذراً، لم نتمكن من تسجيل الدخول بشكل مجهول لبدء وضع الاختبار. يرجى مراجعة سجلات الـ Console.</p>
                             <p class="text-xs text-gray-500 mt-1">معرف التطبيق: ${App.appId}</p>
                         </div>
-                        <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4">
-                            <input type="email" id="login-email" placeholder="البريد الإلكتروني (للمدير)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-shahrazad" required />
-                            <input type="password" id="login-password" placeholder="كلمة السر (Admin123)" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-shahrazad" required />
-                            <button type="submit" class="w-full py-3 rounded-lg gradient-bg text-white font-semibold transition duration-300 hover:opacity-90">
-                                <i data-lucide="log-in" class="w-5 h-5 ml-2 inline"></i> تسجيل الدخول
-                            </button>
-                        </form>
                     </div>
                 </div>
             `,
