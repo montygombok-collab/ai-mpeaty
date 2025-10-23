@@ -1,1175 +1,215 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SHAHRAZAD ELECTRIC | نظام إدارة المبيعات المتقدم</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SHAHRAZAD ELECTRIC - نظام المبيعات</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="images/logo.png">
+  
+  <!-- مكتبات خارجية -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-analytics.js";
     
-    <!-- Tailwind CSS for modern, responsive, and high-end corporate design -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Custom Font: Cairo for strong Arabic presentation -->
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-    
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    
-    <!-- Chart.js for statistics -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBtc-pniRx5Mda5UW_kNqS0Zyi8zcKvdlU",
+      authDomain: "shahrazad-electric.firebaseapp.com",
+      projectId: "shahrazad-electric",
+      storageBucket: "shahrazad-electric.firebasestorage.app",
+      messagingSenderId: "582314926345",
+      appId: "1:582314926345:web:39c2979beadd8b47a133d8",
+      measurementId: "G-3RH0BKKW16"
+    };
 
-    <style>
-        /* Custom styles for SHAHRAZAD ELECTRIC identity */
-        body { font-family: 'Cairo', sans-serif; background-color: #f4f7fa; }
-        /* Brand color (Strong blue) */
-        .text-shahrazad { color: #004d99; } 
-        .bg-shahrazad { background-color: #004d99; }
-        /* Advanced gradient background */
-        .gradient-bg { background: linear-gradient(135deg, #004d99 0%, #002d5b 100%); }
-        /* Soft-edged cards with high shadow */
-        .card { background-color: white; border-radius: 12px; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); transition: transform 0.2s; }
-        .card:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12); }
-        /* Chat box style for the smart assistant */
-        #chat-body { height: 300px; overflow-y: auto; display: flex; flex-direction: column-reverse; }
-        .chat-message-user { background-color: #dbeafe; border-bottom-right-radius: 0; }
-        .chat-message-ai { background-color: #e0f2f1; color: #004d99; border-bottom-left-radius: 0; }
-    </style>
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+  </script>
 </head>
+
 <body>
-
-    <!-- ==================================================================== -->
-    <!--                       Configuration and Initialization Unit (Firebase) -->
-    <!-- ==================================================================== -->
-    <script type="module">
-        
-        // --- 1. Firebase Configuration ---
-        // This configuration is used if not provided by Canvas
-        const defaultFirebaseConfig = {
-            apiKey: "AIzaSyBtc-pniRx5Mda5UW_kNqS0Zyi8zcKvdlU",
-            authDomain: "shahrazad-electric.firebaseapp.com",
-            projectId: "shahrazad-electric",
-            storageBucket: "shahrazad-electric.firebasestorage.app",
-            messagingSenderId: "582314926345",
-            appId: "1:582314926345:web:39c2979beadd8b47a133d8",
-            measurementId: "G-3RH0BKKW16"
-        };
-        
-        // Fetch global variables from the Canvas environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-shahrazad-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        const firestoreConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : defaultFirebaseConfig;
-
-        // --- 2. Firebase Imports ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // --- 3. Initialization ---
-        const app = initializeApp(firestoreConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        setLogLevel('Debug'); // Enable debug logs
-
-        // --- 4. Global State (App) ---
-        window.App = {
-            db,
-            auth,
-            appId,
-            userId: null,
-            userRole: 'staff',
-            view: 'loading',
-            data: { products: [], customers: [], invoices: [], users: [], alerts: [] },
-            
-            // Public collection path (for products, invoices, users)
-            getCollectionPath(collectionName) {
-                return `artifacts/${this.appId}/public/data/${collectionName}`;
-            },
-        };
-
-        // ====================================================================
-        //                      Auth and Role Management Unit (Auth & Roles)       
-        // ====================================================================
-        
-        async function authenticateUser() {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(App.auth, initialAuthToken);
-                } else {
-                    // Force anonymous sign-in for test mode
-                    await signInAnonymously(App.auth); 
-                }
-            } catch (error) {
-                console.error("Critical Firebase authentication error:", error);
-                App.view = 'auth_error';
-                render();
-            }
-        }
-
-        function setupAuthStateListener() {
-            onAuthStateChanged(App.auth, async (user) => {
-                if (user) {
-                    App.userId = user.uid;
-                    const userDocRef = doc(App.db, App.getCollectionPath('users'), user.uid);
-                    const userDoc = await getDoc(userDocRef);
-                    
-                    if (userDoc.exists()) {
-                        App.userRole = userDoc.data().role || 'staff';
-                    } else {
-                        // Default 'staff' role for any new anonymously signed-in user
-                        App.userRole = 'staff'; 
-                        await setDoc(userDocRef, { uid: user.uid, role: App.userRole, createdAt: new Date().toISOString() }, { merge: true });
-                    }
-
-                    setupFirestoreListeners();
-                    App.view = 'dashboard'; // Direct routing to dashboard
-                } else {
-                    // Re-authenticate anonymously if signed out for test continuity
-                    console.log("User signed out (testing mode), re-authenticating anonymously.");
-                    await signInAnonymously(App.auth);
-                }
-                render();
-            });
-        }
-        
-        window.handleLogout = () => {
-             signOut(App.auth).then(async () => { 
-                alertUser("تم تسجيل الخروج بنجاح. يتم الآن تسجيل الدخول مجهولاً للاستمرار في الاختبار.", "success"); 
-             }).catch(console.error);
-        };
-        
-        // ====================================================================
-        //                      Real-Time Data Fetching Unit (Firestore)      
-        // ====================================================================
-
-        function setupFirestoreListeners() {
-            if (!App.userId) return;
-
-            // 1. Products and Inventory
-            onSnapshot(collection(App.db, App.getCollectionPath('products')), (snapshot) => {
-                App.data.products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                checkLowStockAlerts();
-                if (['products', 'dashboard', 'alerts', 'invoices'].includes(App.view)) render(); 
-            }, console.error);
-
-            // 2. Customers
-            onSnapshot(collection(App.db, App.getCollectionPath('customers')), (snapshot) => {
-                App.data.customers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (['customers', 'invoices', 'dashboard'].includes(App.view)) render();
-            }, console.error);
-            
-            // 3. Invoices
-            onSnapshot(collection(App.db, App.getCollectionPath('invoices')), (snapshot) => {
-                App.data.invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (['dashboard', 'invoices'].includes(App.view)) render();
-            }, console.error);
-            
-             // 4. Users
-            onSnapshot(collection(App.db, App.getCollectionPath('users')), (snapshot) => {
-                App.data.users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (App.view === 'user_settings') render();
-            }, console.error);
-        }
-        
-        // ====================================================================
-        //                      Inventory and Alerts Unit
-        // ====================================================================
-
-        function checkLowStockAlerts() {
-            const lowStockProducts = App.data.products.filter(p => p.stock <= (p.lowStockThreshold || 10));
-            const alertsContainer = document.getElementById('alerts-container');
-            const alertsContainerFull = document.getElementById('alerts-container-full');
-            
-            const alertHTML = lowStockProducts.length > 0
-                ? lowStockProducts.map(p => 
-                    `<div class="p-3 mb-2 bg-red-100 text-red-700 rounded-lg shadow-sm flex justify-between items-center text-sm border-r-4 border-red-500">
-                        <i data-lucide="alert-triangle" class="w-4 h-4 ml-2"></i>
-                        <p>الصنف **${p.name}** منخفض. الكمية: **${p.stock}**</p>
-                    </div>`
-                ).join('')
-                : `<p class="text-gray-500 text-sm p-4 text-center">لا توجد تنبيهات نقص مخزون حالياً.</p>`;
-                
-            if (alertsContainer) alertsContainer.innerHTML = alertHTML;
-            if (alertsContainerFull) alertsContainerFull.innerHTML = alertHTML;
-            lucide.createIcons();
-        }
-        
-        // ====================================================================
-        //                      Smart Assistant Unit (Gemini API Integration)       
-        // = ** (API Key is intentionally left empty as per environment rules) **
-        // ====================================================================
-
-        window.toggleAssistant = () => {
-            const container = document.getElementById('smart-assistant-container');
-            container.style.display = container.style.display === 'none' ? 'flex' : 'none'; // Changed to flex for better layout
-        };
-        
-        window.sendAssistantQuery = async () => {
-            const input = document.getElementById('chat-input');
-            const query = input.value.trim();
-            if (!query) return;
-
-            const chatBody = document.getElementById('chat-body');
-            // User message
-            chatBody.insertAdjacentHTML('afterbegin', `
-                <div class="flex justify-start mb-2">
-                    <div class="max-w-xs p-3 rounded-xl chat-message-user shadow-md">${query}</div>
-                </div>
-            `);
-            input.value = '';
-            
-            // Typing indicator
-            chatBody.insertAdjacentHTML('afterbegin', `
-                <div id="ai-typing-indicator" class="flex justify-end mb-2">
-                    <div class="max-w-xs p-3 rounded-xl chat-message-ai shadow-md">... جاري التفكير</div>
-                </div>
-            `);
-            
-            const typingIndicator = document.getElementById('ai-typing-indicator');
-
-            // Prepare the model context (System Prompt)
-            const productList = App.data.products.map(p => `ID:${p.id}, Name:${p.name}, Stock:${p.stock}, Price:${p.price}, Warehouse:${p.warehouse}, Threshold:${p.lowStockThreshold}`).join('; ');
-            const customerList = App.data.customers.map(c => `Name:${c.name}, Distinguished:${c.isDistinguished}, Spent:${c.totalSpent || 0}`).join('; ');
-
-            const systemPrompt = `
-                أنت المساعد الذكي لشركة SHAHRAZAD ELECTRIC. مهمتك هي الإجابة على استفسارات المستخدمين باللغة العربية بناءً على البيانات المقدمة.
-                - اعتمد على البيانات التالية لتكون إجاباتك دقيقة ومرتبطة ببيانات المخزون والمبيعات.
-                - يجب أن تكون الإجابات مهنية وموجزة.
-
-                **بيانات النظام الحالية:**
-                - المنتجات والمخزون: [${productList}]
-                - العملاء وإجمالي الإنفاق: [${customerList}]
-            `;
-            
-            // NOTE: apiKey MUST be empty string as per environment rules.
-            const apiKey = ""; 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const payload = {
-                contents: [{ parts: [{ text: query }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-            };
-
-            try {
-                let resultText = "عذراً، لم أتمكن من الحصول على استجابة.";
-                
-                // Exponential Backoff Retry Logic
-                let response = null;
-                for (let attempt = 0; attempt < 3; attempt++) {
-                    response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    
-                    if (response.ok) {
-                        const result = await response.json();
-                        resultText = result.candidates?.[0]?.content?.parts?.[0]?.text || resultText;
-                        break; 
-                    } 
-                    
-                    if (response.status === 429) { // Too Many Requests - Retry
-                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
-                        continue;
-                    } else { // Other errors (403 Forbidden, 400 Bad Request) - Throw to trigger MOCKING
-                        const errorBody = await response.json();
-                        throw new Error(`API error: ${response.status} - ${errorBody.error?.message || response.statusText}`);
-                    }
-                }
-                
-                // Remove typing indicator and add AI response
-                typingIndicator.remove();
-                chatBody.insertAdjacentHTML('afterbegin', `
-                    <div class="flex justify-end mb-2">
-                        <div class="max-w-xs p-3 rounded-xl chat-message-ai shadow-md">${resultText}</div>
-                    </div>
-                `);
-                
-            } catch (error) {
-                console.error("Gemini API connection failed, falling back to Mocking Logic:", error);
-
-                // =========================================================
-                // START MOCKING LOGIC (Fallback for 403 Forbidden error)
-                // =========================================================
-                
-                let mockResultText = `
-                    <p class="font-bold text-red-600 mb-2">⚠️ **خطأ في الاتصال بالذكاء الاصطناعي (403 - فشل الحقن التلقائي للمفتاح).**
-                    سأقوم بالرد آلياً الآن اعتماداً على بيانات Firestore المحلية:</p>
-                `;
-
-                const lowerQuery = query.toLowerCase();
-                
-                if (lowerQuery.includes('مخزون') || lowerQuery.includes('نقص') || lowerQuery.includes('منخفض') || lowerQuery.includes('مخزن')) {
-                    const lowStockItems = App.data.products.filter(p => p.stock <= (p.lowStockThreshold || 10));
-                    
-                    if (lowStockItems.length > 0) {
-                        mockResultText += `<p>هناك **${lowStockItems.length} صنف** يعاني من نقص في المخزون (أقل من ${lowStockItems[0].lowStockThreshold || 10}):</p>`;
-                        lowStockItems.slice(0, 3).forEach(item => { // Show top 3
-                            mockResultText += `<p class="mt-1 pr-3 border-r-4 border-red-500">**${item.name}**: الكمية ${item.stock} في مخزن ${item.warehouse}.</p>`;
-                        });
-                    } else {
-                        mockResultText += `<p>**المخزون:** جميع الأصناف تبدو جيدة ولا توجد تنبيهات نقص مخزون حالياً.</p>`;
-                    }
-                } else if (lowerQuery.includes('عميل') || lowerQuery.includes('مميز') || lowerQuery.includes('vip')) {
-                    const distinguishedCount = App.data.customers.filter(c => c.isDistinguished).length;
-                    const totalCustomers = App.data.customers.length;
-                    mockResultText += `<p>**العملاء:** لدينا **${distinguishedCount} عميل مميز (VIP)** من أصل ${totalCustomers} عميل مسجل في النظام.</p>`;
-                } else if (lowerQuery.includes('سعر') || lowerQuery.includes('أغلى')) {
-                    const mostExpensive = App.data.products.sort((a, b) => b.price - a.price)[0];
-                    if (mostExpensive) {
-                        mockResultText += `<p>**معلومات السعر:** أغلى صنف مسجل هو **${mostExpensive.name}** بسعر ${mostExpensive.price.toFixed(2)} ر.ق.</p>`;
-                    } else {
-                         mockResultText += `<p>**معلومات السعر:** لا توجد أصناف مسجلة لحساب السعر.</p>`;
-                    }
-                } else {
-                    mockResultText += `<p>**رسالة عامة:** أنا مستعد لمساعدتك في استعراض بيانات SHAHRAZAD ELECTRIC. يمكنك سؤالي عن "نقص المخزون"، "العملاء المميزون"، أو "سعر صنف معين".</p>`;
-                }
-
-                // =========================================================
-                // END MOCKING LOGIC
-                // =========================================================
-                
-                typingIndicator.remove();
-                chatBody.insertAdjacentHTML('afterbegin', `
-                    <div class="flex justify-end mb-2">
-                        <div class="max-w-xs p-3 rounded-xl chat-message-ai shadow-md">${mockResultText}</div>
-                    </div>
-                `);
-            }
-        };
-
-        // ====================================================================
-        //                      Utility Unit (UI & Utils)                  
-        // ====================================================================
-
-        function alertUser(message, type) {
-            // Custom message box instead of alert()
-            const alertBox = document.getElementById('global-alert');
-            alertBox.innerText = message;
-            alertBox.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} translate-y-0 opacity-100`;
-            setTimeout(() => {
-                alertBox.className += ' -translate-y-20 opacity-0';
-            }, 5000);
-        }
-
-        window.navigateTo = (viewName) => { App.view = viewName; render(); };
-
-        /** Data Backup and Download **/
-        window.backupData = async () => {
-            const collectionsToBackup = ['products', 'customers', 'invoices', 'users', 'alerts'];
-            const backup = {};
-            document.getElementById('backup-btn').innerText = 'جارٍ التجهيز...';
-            
-            try {
-                for (const colName of collectionsToBackup) {
-                    const colPath = App.getCollectionPath(colName);
-                    const q = query(collection(App.db, colPath));
-                    const snapshot = await getDocs(q);
-                    
-                    backup[colName] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                }
-
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
-                const downloadAnchorNode = document.createElement('a');
-                downloadAnchorNode.setAttribute("href", dataStr);
-                downloadAnchorNode.setAttribute("download", `SHAHRAZAD_backup_${new Date().toISOString().slice(0, 10)}.json`);
-                document.body.appendChild(downloadAnchorNode);
-                downloadAnchorNode.click();
-                downloadAnchorNode.remove();
-                
-                alertUser("تم إنشاء النسخة الاحتياطية بنجاح وتنزيل الملف.", "success");
-
-            } catch (error) {
-                console.error("Backup failed:", error);
-                alertUser(`فشل النسخ الاحتياطي: ${error.message}`, "error");
-            } finally {
-                document.getElementById('backup-btn').innerHTML = `<i data-lucide="download" class="w-5 h-5 ml-2"></i> نسخ احتياطي`;
-                lucide.createIcons();
-            }
-        };
-
-
-        // ====================================================================
-        //                      Rendering and Layout Unit          
-        // ====================================================================
-
-        function MainLayout() {
-            if (App.view === 'loading' || App.view === 'auth_error') {
-                return App.views[App.view]();
-            }
-            
-            return `
-                <div class="flex h-screen bg-gray-50">
-                    <!-- Sidebar -->
-                    <div id="sidebar" class="flex flex-col w-64 bg-white border-l shadow-2xl p-4">
-                        <div class="mb-8 text-center">
-                            <h1 class="text-3xl font-extrabold text-shahrazad">SHAHRAZAD</h1>
-                            <p class="text-xs text-gray-500">ELECTRIC Sales System (Test Mode)</p>
-                            <p class="text-xs text-gray-400 mt-2">الصلاحية: **${App.userRole === 'admin' ? 'المدير الأساسي' : 'موظف مبيعات'}**</p>
-                            <p class="text-xs text-gray-400">UID: ${App.userId ? App.userId.substring(0, 15) + '...' : 'N/A'}</p>
-                        </div>
-
-                        <!-- Navigation Items -->
-                        ${renderNavigation()}
-                        
-                        <!-- Utilities Footer -->
-                        <div class="mt-auto pt-4 border-t">
-                            <button onclick="window.backupData()" id="backup-btn" class="w-full flex items-center justify-center p-3 my-2 rounded-xl bg-green-600 text-white font-semibold transition hover:bg-green-700">
-                                <i data-lucide="download" class="w-5 h-5 ml-2"></i> نسخ احتياطي
-                            </button>
-                            <button onclick="handleLogout()" class="w-full flex items-center justify-center p-3 rounded-xl bg-red-600 text-white font-semibold transition hover:bg-red-700">
-                                <i data-lucide="log-out" class="w-5 h-5 ml-2"></i> تسجيل خروج
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Main Content Area -->
-                    <main class="flex-1 overflow-y-auto p-8">
-                        <div id="content-area" class="pb-20">
-                            <!-- Dynamic content goes here -->
-                            ${App.views[App.view] ? App.views[App.view]() : DashboardView()}
-                        </div>
-                    </main>
-
-                    <!-- Smart Assistant Window -->
-                    <div id="smart-assistant-container" class="card shadow-2xl flex flex-col hidden" 
-                         style="position: fixed; bottom: 20px; left: 20px; width: 350px; height: 450px; z-index: 1000;">
-                        <div onclick="window.toggleAssistant()" class="gradient-bg text-white p-3 flex justify-between items-center cursor-pointer rounded-t-xl">
-                            <h3 class="font-bold">المساعد الذكي لـ SHAHRAZAD</h3>
-                            <i data-lucide="x" class="w-5 h-5"></i>
-                        </div>
-                        <div id="chat-body" class="flex-1 p-3 space-y-2 overflow-y-auto flex flex-col-reverse">
-                            <!-- Messages appear here -->
-                        </div>
-                        <form onsubmit="event.preventDefault(); window.sendAssistantQuery()" class="p-3 border-t">
-                            <div class="flex">
-                                <input type="text" id="chat-input" placeholder="اسأل عن الأصناف والمخزون..." class="flex-1 p-2 border border-gray-300 rounded-lg ml-2 focus:ring-shahrazad" />
-                                <button type="submit" class="bg-shahrazad text-white p-2 rounded-lg hover:bg-opacity-90">
-                                    <i data-lucide="send" class="w-5 h-5"></i>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Floating Action Button for Assistant -->
-                    <button onclick="window.toggleAssistant()" class="fixed bottom-6 left-6 w-14 h-14 rounded-full bg-yellow-500 text-white shadow-2xl hover:scale-105 transition duration-300 z-50">
-                        <i data-lucide="brain" class="w-7 h-7 mx-auto"></i>
-                    </button>
-                </div>
-            `;
-        }
-        
-        function renderNavigation() {
-            const navItems = [
-                { name: 'الرئيسية والإحصائيات', view: 'dashboard', icon: 'layout-dashboard' },
-                { name: 'إدارة الأصناف والمخازن', view: 'products', icon: 'box' },
-                { name: 'إنشاء الفواتير', view: 'invoices', icon: 'receipt' },
-                { name: 'العملاء المميزون', view: 'customers', icon: 'star' },
-                { name: 'تنبيهات الأصناف', view: 'alerts', icon: 'bell' },
-                { name: 'إعدادات عامة', view: 'general_settings', icon: 'settings' },
-                { name: 'إدارة المستخدمين', view: 'user_settings', icon: 'users', requiresAdmin: true },
-            ];
-            
-            return navItems.map(item => {
-                if (item.requiresAdmin && App.userRole !== 'admin') return '';
-                const isActive = App.view === item.view ? 'bg-shahrazad text-white shadow-lg' : 'text-gray-600 hover:bg-gray-100';
-                return `
-                    <button onclick="navigateTo('${item.view}')" class="flex items-center w-full p-3 my-1 rounded-xl font-medium transition duration-150 ${isActive}">
-                        <i data-lucide="${item.icon}" class="w-5 h-5 ml-3"></i>
-                        <span>${item.name}</span>
-                    </button>
-                `;
-            }).join('');
-        }
-
-        // Define View Functions (Content remains the same for simplicity)
-        const DashboardView = () => { /* ... (Content same as before) ... */
-             const totalProducts = App.data.products.length;
-            const totalInvoices = App.data.invoices.length;
-            const totalCustomers = App.data.customers.length;
-            const lowStockCount = App.data.products.filter(p => p.stock <= (p.lowStockThreshold || 10)).length;
-            
-            return `
-                <div class="space-y-8">
-                    <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">لوحة تحكم SHAHRAZAD ELECTRIC</h2>
-                    ${renderKPICards(totalProducts, totalInvoices, totalCustomers, lowStockCount)}
-
-                    <!-- Alerts & Quick Actions -->
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div class="card p-5 lg:col-span-2">
-                            <h3 class="text-xl font-semibold mb-4 text-gray-700">تنبيهات نقص المخزون (الأصناف المنخفضة)</h3>
-                            <div id="alerts-container">
-                                <p class="text-gray-500 text-sm p-4 text-center">جاري فحص التنبيهات...</p>
-                            </div>
-                        </div>
-                        <div class="card p-5">
-                            <h3 class="text-xl font-semibold mb-4 text-gray-700">إجراءات سريعة</h3>
-                            <button onclick="navigateTo('invoices')" class="w-full py-2 mb-3 rounded-lg bg-yellow-500 text-white font-medium hover:bg-yellow-600 transition flex items-center justify-center">
-                                <i data-lucide="plus-circle" class="w-5 h-5 ml-2"></i> إنشاء فاتورة جديدة
-                            </button>
-                            <button onclick="navigateTo('products')" class="w-full py-2 rounded-lg bg-shahrazad text-white font-medium hover:opacity-90 transition flex items-center justify-center">
-                                <i data-lucide="package" class="w-5 h-5 ml-2"></i> إضافة صنف جديد
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Statistics Charts Area -->
-                    <div class="card p-6">
-                        <h3 class="text-xl font-semibold mb-6 text-gray-700">رسوم بيانية إحصائية (الأداء)</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <h4 class="text-lg font-medium mb-3">أكثر الأصناف مبيعاً (كمية)</h4>
-                                <canvas id="salesChart"></canvas>
-                            </div>
-                            <div>
-                                <h4 class="text-lg font-medium mb-3">توزيع العملاء (مميز/عادي)</h4>
-                                <canvas id="customerChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        };
-
-        const ProductsView = () => {
-             const productsOptions = App.data.products.map(p => 
-                `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} (مخزون: ${p.stock})</option>`
-            ).join('');
-
-            return `
-                <div class="space-y-8">
-                    <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إدارة الأصناف والمخازن</h2>
-                    
-                    <!-- إضافة صنف جديد -->
-                    <div class="card p-6">
-                        <h3 class="text-xl font-semibold mb-4 text-shahrazad">إضافة صنف جديد لـ SHAHRAZAD</h3>
-                        <form id="add-product-form" onsubmit="handleProductSubmit(event)">
-                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <input type="text" id="p-name" placeholder="اسم الصنف (مثال: كابل 1.5مم)" class="p-3 border rounded-lg" required>
-                                <input type="text" id="p-code" placeholder="رمز/باركود الصنف" class="p-3 border rounded-lg" required>
-                                <input type="number" id="p-price" placeholder="سعر البيع" class="p-3 border rounded-lg" min="0" step="0.01" required>
-                                <input type="number" id="p-stock" placeholder="كمية المخزون الأولية" class="p-3 border rounded-lg" min="0" required>
-                                <select type="number" id="p-warehouse" class="p-3 border rounded-lg" required>
-                                    <option value="" disabled selected>اختر المخزن</option>
-                                    <option value="main">المخزن الرئيسي</option>
-                                    <option value="branch_a">فرع جدة</option>
-                                    <option value="branch_b">فرع الرياض</option>
-                                </select>
-                                <input type="number" id="p-threshold" placeholder="حد التنبيه (مثال: 10)" class="p-3 border rounded-lg" min="1" required value="10">
-                                <button type="submit" class="col-span-2 py-3 rounded-lg bg-green-500 text-white font-semibold hover:bg-green-600 transition">
-                                    <i data-lucide="save" class="w-5 h-5 ml-2 inline"></i> حفظ الصنف
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                    
-                    <!-- جدول الأصناف -->
-                    <div class="card p-6 overflow-x-auto">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700">قائمة الأصناف الحالية (${App.data.products.length} صنف)</h3>
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الاسم</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الرمز</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">السعر</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المخزون</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">المخزن</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
-                                </tr>
-                            </thead>
-                            <tbody id="products-table-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Will be dynamically populated -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-        };
-
-        const InvoicesView = () => {
-             const distinguishedCustomers = App.data.customers.filter(c => c.isDistinguished);
-             const productsOptions = App.data.products.map(p => 
-                 `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} (مخزون: ${p.stock})</option>`
-             ).join('');
-
-             return `
-                 <div class="space-y-8">
-                     <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إنشاء وإدارة فواتير SHAHRAZAD</h2>
- 
-                     <div class="card p-6">
-                         <h3 class="text-xl font-semibold mb-4 text-shahrazad">فاتورة مبيعات جديدة</h3>
-                         <form id="new-invoice-form" onsubmit="handleInvoiceSubmit(event)">
-                             <!-- Customer Selection -->
-                             <div class="mb-4">
-                                 <label class="block text-gray-700 mb-2">العميل</label>
-                                 <select id="invoice-customer" class="w-full p-3 border rounded-lg" required>
-                                     <option value="" disabled selected>اختر العميل</option>
-                                     ${App.data.customers.map(c => `<option value="${c.id}">${c.name} (${c.isDistinguished ? 'مميز' : 'عادي'})</option>`).join('')}
-                                     <option value="guest">عميل نقدي/غير مسجل</option>
-                                 </select>
-                             </div>
-                             
-                             <!-- Items Details -->
-                             <div class="mb-4 p-4 border rounded-lg bg-gray-50">
-                                 <label class="block text-gray-700 mb-3 font-semibold">تفاصيل الأصناف</label>
-                                 <div id="invoice-items-container" class="space-y-3">
-                                     <!-- First Row (Template) -->
-                                     <div class="flex space-x-2 space-x-reverse items-center">
-                                         <select name="product-id" class="flex-1 p-2 border rounded-lg product-select" required onchange="calculateInvoiceTotal()">
-                                             <option value="">اختر صنف...</option>
-                                             ${productsOptions}
-                                         </select>
-                                         <input type="number" name="quantity" placeholder="الكمية" min="1" value="1" class="w-20 p-2 border rounded-lg text-center invoice-quantity" required onchange="calculateInvoiceTotal()">
-                                         <input type="text" name="price" placeholder="السعر" class="w-24 p-2 border rounded-lg text-center invoice-price bg-gray-200" readonly>
-                                         <button type="button" onclick="removeInvoiceItem(this)" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                                     </div>
-                                 </div>
-                                 <button type="button" onclick="addInvoiceItemRow()" class="mt-4 py-2 px-4 rounded-lg bg-shahrazad text-white hover:opacity-90 transition flex items-center">
-                                     <i data-lucide="plus" class="w-5 h-5 ml-2"></i> إضافة صنف آخر
-                                 </button>
-                             </div>
- 
-                             <!-- Barcode Option -->
-                             <div class="flex items-center mb-6 p-3 border rounded-lg bg-yellow-50">
-                                 <input type="checkbox" id="barcode-toggle" class="w-4 h-4 text-shahrazad rounded focus:ring-shahrazad">
-                                 <label for="barcode-toggle" class="mr-2 text-gray-700 font-medium">تفعيل ماسح الباركود (يضيف الصنف عبر المسح)</label>
-                             </div>
-
-                             <!-- Total -->
-                             <div class="text-left text-2xl font-extrabold mb-6 p-4 bg-gray-100 rounded-lg">
-                                 الإجمالي النهائي: <span id="invoice-total" class="text-green-600">0.00</span> ر.ق
-                             </div>
-                             
-                             <!-- Completion Button -->
-                             <button type="submit" class="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition">
-                                 <i data-lucide="check-circle" class="w-5 h-5 ml-2 inline"></i> إتمام الفاتورة
-                             </button>
-                         </form>
-                     </div>
-                 </div>
-             `;
-        };
-        
-        const CustomersView = () => {
-             const distinguished = App.data.customers.filter(c => c.isDistinguished);
-             const regular = App.data.customers.filter(c => !c.isDistinguished);
-            
-             return `
-                <div class="space-y-8">
-                    <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إدارة العملاء المميزين (VIP)</h2>
-                    
-                    <!-- Add Customer -->
-                    <div class="card p-6">
-                        <h3 class="text-xl font-semibold mb-4 text-shahrazad">إضافة عميل (تحديد عميل مميز يدوي)</h3>
-                        <form onsubmit="handleCustomerSubmit(event)">
-                            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                                <input type="text" id="c-name" placeholder="اسم العميل" class="p-3 border rounded-lg" required>
-                                <input type="tel" id="c-phone" placeholder="رقم الهاتف" class="p-3 border rounded-lg" required>
-                                <input type="text" id="c-address" placeholder="العنوان" class="p-3 border rounded-lg md:col-span-1">
-                                <div class="flex items-center p-3 border rounded-lg bg-blue-50">
-                                    <input type="checkbox" id="c-distinguished" class="w-5 h-5 text-shahrazad rounded focus:ring-shahrazad">
-                                    <label for="c-distinguished" class="mr-2 text-gray-700">عميل مميز</label>
-                                </div>
-                                <button type="submit" class="py-3 rounded-lg bg-shahrazad text-white font-semibold hover:opacity-90 transition md:col-span-1">
-                                    <i data-lucide="user-plus" class="w-5 h-5 ml-2 inline"></i> حفظ العميل
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <!-- Distinguished Customers List -->
-                    <div class="card p-6">
-                        <h3 class="text-xl font-semibold mb-4 text-yellow-600">قائمة العملاء المميزين (${distinguished.length})</h3>
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-yellow-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الاسم</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الهاتف</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">إجمالي الشراء</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عدد الفواتير</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    ${distinguished.map(c => `
-                                        <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap">${c.name}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">${c.phone}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-green-600 font-bold">${(c.totalSpent || 0).toFixed(2)} ر.ق</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">${c.totalInvoices || 0}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-        };
-        
-        const AlertsView = () => { 
-             return `
-                <div class="space-y-8">
-                    <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">تنبيهات النظام</h2>
-                    <div class="card p-6">
-                        <h3 class="text-xl font-semibold mb-4 text-red-500">تنبيهات الأصناف منخفضة المخزون</h3>
-                        <div id="alerts-container-full" class="space-y-3">
-                            <p class="text-gray-500 text-sm p-4 text-center">جاري تحميل التنبيهات...</p>
-                        </div>
-                    </div>
-                    <!-- (Can add payment alerts, delayed invoices here) -->
-                </div>
-            `;
-        };
-
-        const UserSettingsView = () => {
-             if (App.userRole !== 'admin') {
-                return '<div class="p-8 text-center text-red-500">ليس لديك صلاحية المدير الأساسي للوصول لهذه الصفحة.</div>';
-             }
-             return `
-                 <div class="space-y-8">
-                     <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إعدادات وصلاحيات المستخدمين</h2>
- 
-                     <!-- Change Password (Current User) -->
-                     <div class="card p-6">
-                         <h3 class="text-xl font-semibold mb-4 text-shahrazad">تغيير كلمة السر الخاصة بي</h3>
-                         <form onsubmit="handleChangePassword(event)">
-                             <input type="password" id="new-password" placeholder="كلمة السر الجديدة" class="w-full p-3 border rounded-lg mb-4" minlength="6" required>
-                             <button type="submit" class="py-2 px-4 rounded-lg bg-shahrazad text-white hover:opacity-90 transition">
-                                 <i data-lucide="key-round" class="w-5 h-5 ml-2 inline"></i> تحديث كلمة السر
-                             </button>
-                         </form>
-                     </div>
-                     
-                     <!-- User Management Table (Admin Only) -->
-                     <div class="card p-6 overflow-x-auto">
-                         <h3 class="text-xl font-semibold mb-4 text-gray-700">قائمة مستخدمي النظام</h3>
-                         <table class="min-w-full divide-y divide-gray-200">
-                             <thead class="bg-gray-50">
-                                 <tr>
-                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">UID</th>
-                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الصلاحية</th>
-                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الإجراءات</th>
-                                 </tr>
-                             </thead>
-                             <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
-                                 <!-- Dynamically populated -->
-                             </tbody>
-                         </table>
-                     </div>
-                 </div>
-             `;
-        };
-
-        const GeneralSettingsView = () => {
-            return `
-                <div class="space-y-8">
-                    <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">الإعدادات العامة لنظام SHAHRAZAD</h2>
-
-                    <!-- Barcode Option -->
-                    <div class="card p-6">
-                        <h3 class="text-xl font-semibold mb-4 text-shahrazad">خيار تشغيل ماسح الباركود</h3>
-                        <div class="flex items-center justify-between p-3 border rounded-lg bg-yellow-50">
-                            <label for="system-barcode-toggle" class="text-gray-700 font-medium">تفعيل الماسح الضوئي للباركود</label>
-                            <input type="checkbox" id="system-barcode-toggle" class="w-6 h-6 text-shahrazad rounded focus:ring-shahrazad">
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2">عند التفعيل، يمكن البدء في مسح الباركود مباشرة في شاشة إنشاء الفواتير.</p>
-                    </div>
-                    
-                    <!-- Branches and Warehouses -->
-                    <div class="card p-6">
-                        <h3 class="text-xl font-semibold mb-4 text-shahrazad">إعدادات الفروع والمخازن</h3>
-                        <p class="text-gray-500 mb-4">هذه هي الفروع والمخازن المتاحة حالياً في النظام:</p>
-                        <ul class="list-disc pr-6 space-y-2 text-gray-700">
-                            <li>المخزن الرئيسي</li>
-                            <li>فرع جدة</li>
-                            <li>فرع الرياض</li>
-                        </ul>
-                    </div>
-                </div>
-            `;
-        };
-        
-        App.views = {
-            loading: () => `<div class="h-screen flex items-center justify-center bg-gray-50"><div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-shahrazad"></div><p class="mr-4 text-xl text-gray-700">جاري تحميل نظام SHAHRAZAD...</p></div>`,
-            auth_error: () => `
-                <div class="min-h-screen flex items-center justify-center p-4 bg-red-100">
-                    <div class="card w-full max-w-lg p-8 space-y-6 shadow-2xl border-t-4 border-red-500">
-                        <div class="text-center">
-                            <h1 class="text-4xl font-extrabold text-red-700">خطأ في المصادقة</h1>
-                            <p class="text-gray-600 mt-2">عذراً، لم نتمكن من تسجيل الدخول بشكل مجهول لبدء وضع الاختبار. يرجى مراجعة سجلات الـ Console.</p>
-                            <p class="text-xs text-gray-500 mt-1">معرف التطبيق: ${App.appId}</p>
-                        </div>
-                    </div>
-                </div>
-            `,
-            dashboard: DashboardView,
-            products: ProductsView,
-            invoices: InvoicesView,
-            customers: CustomersView,
-            alerts: AlertsView,
-            user_settings: UserSettingsView,
-            general_settings: GeneralSettingsView,
-        };
-
-        // Main render function
-        function render() {
-            document.body.innerHTML = MainLayout();
-            lucide.createIcons();
-            
-            // Execute view-specific rendering logic
-            if (App.view === 'dashboard' || App.view === 'stats') {
-                populateProductTable(); 
-                renderStatistics();
-                checkLowStockAlerts();
-            } else if (App.view === 'products') {
-                populateProductTable();
-            } else if (App.view === 'user_settings') {
-                populateUserTable();
-            } else if (App.view === 'alerts') {
-                checkLowStockAlerts();
-            }
-        }
-        
-        // ====================================================================
-        //                      Business Logic Handlers        
-        // ====================================================================
-
-        /** Add Product Handler **/
-        window.handleProductSubmit = (e) => {
-            e.preventDefault();
-            const name = document.getElementById('p-name').value;
-            const code = document.getElementById('p-code').value;
-            const price = document.getElementById('p-price').value;
-            const stock = document.getElementById('p-stock').value;
-            const warehouse = document.getElementById('p-warehouse').value;
-            const lowStockThreshold = document.getElementById('p-threshold').value;
-
-            try {
-                addDoc(collection(App.db, App.getCollectionPath('products')), {
-                    name, code: code.toUpperCase(), price: parseFloat(price), 
-                    stock: parseInt(stock), warehouse, lowStockThreshold: parseInt(lowStockThreshold),
-                    createdBy: App.userId, createdAt: new Date().toISOString()
-                });
-                document.getElementById('add-product-form').reset();
-                alertUser(`تم إضافة الصنف "${name}" بنجاح.`, 'success');
-            } catch (e) { console.error("Error adding product: ", e); alertUser("فشل إضافة الصنف.", 'error');}
-        };
-
-        /** Customer Management Handler **/
-        window.handleCustomerSubmit = (e) => {
-            e.preventDefault();
-            const name = document.getElementById('c-name').value;
-            const phone = document.getElementById('c-phone').value;
-            const address = document.getElementById('c-address').value;
-            const isDistinguished = document.getElementById('c-distinguished').checked;
-
-            try {
-                addDoc(collection(App.db, App.getCollectionPath('customers')), {
-                    name, phone, address, isDistinguished, totalInvoices: 0, totalSpent: 0,
-                });
-                e.target.reset();
-                alertUser(`تم إضافة العميل "${name}" بنجاح.`, 'success');
-            } catch (e) { console.error("Error adding customer: ", e); alertUser("فشل إضافة العميل.", 'error');}
-        };
-
-        /** Invoice Completion Handler **/
-        window.handleInvoiceSubmit = async (e) => {
-             e.preventDefault();
-             if (!App.userId) return;
-
-             const customerId = document.getElementById('invoice-customer').value;
-             const itemRows = document.querySelectorAll('#invoice-items-container > div');
-             const items = [];
-             let total = 0;
-             let stockUpdateBatch = App.db.batch();
-             let hasError = false;
-
-             // 1. Stock Check and Data Preparation
-             itemRows.forEach(row => {
-                 const productId = row.querySelector('.product-select').value;
-                 const quantity = parseInt(row.querySelector('.invoice-quantity').value);
-                 const price = parseFloat(row.querySelector('.invoice-price').value);
-
-                 if (productId && quantity > 0 && price >= 0) {
-                     const product = App.data.products.find(p => p.id === productId);
-                     if (!product || product.stock < quantity) {
-                         alertUser(`خطأ: كمية "${product?.name || productId}" (${quantity}) تتجاوز المخزون (${product?.stock || 0}).`, 'error');
-                         hasError = true;
-                         return;
-                     }
-                     
-                     items.push({ productId, quantity, price, subtotal: quantity * price });
-                     total += quantity * price;
-
-                     // Stock Update (in batch)
-                     const productRef = doc(App.db, App.getCollectionPath('products'), productId);
-                     stockUpdateBatch.update(productRef, { stock: product.stock - quantity });
-                 }
-             });
-
-             if (hasError || items.length === 0) {
-                 if (items.length === 0 && !hasError) alertUser('الرجاء إضافة صنف واحد على الأقل للفاتورة.', 'error');
-                 return;
-             }
-
-             try {
-                 // 2. Commit Stock Updates
-                 await stockUpdateBatch.commit();
-
-                 // 3. Add Invoice
-                 await addDoc(collection(App.db, App.getCollectionPath('invoices')), {
-                     invoiceId: `INV-${Date.now()}`,
-                     customerId,
-                     items,
-                     total: total,
-                     date: new Date().toISOString(),
-                     processedBy: App.userId
-                 });
-                 
-                 // 4. Update Customer Record
-                 if (customerId !== 'guest') {
-                     const customerRef = doc(App.db, App.getCollectionPath('customers'), customerId);
-                     const customerDoc = await getDoc(customerRef);
-                     if (customerDoc.exists()) {
-                          const currentSpent = customerDoc.data().totalSpent || 0;
-                          const currentInvoices = customerDoc.data().totalInvoices || 0;
-                          const newTotalSpent = currentSpent + total;
-
-                          // Automatically mark as distinguished if spent > 5000 QAR
-                          await updateDoc(customerRef, {
-                             totalSpent: newTotalSpent,
-                             totalInvoices: currentInvoices + 1,
-                             isDistinguished: newTotalSpent > 5000 
-                          });
-                     }
-                 }
-                 
-                 document.getElementById('new-invoice-form').reset();
-                 calculateInvoiceTotal(); 
-                 alertUser(`تم إصدار فاتورة SHAHRAZAD بنجاح. الإجمالي: ${total.toFixed(2)} ر.ق`, 'success');
-                 navigateTo('dashboard');
-             } catch (e) {
-                 console.error("Invoicing/Inventory process error: ", e);
-                 alertUser(`فشل إنشاء الفاتورة: ${e.message}`, 'error');
-             }
-         };
-         
-        // Helper function for adding invoice item rows
-        window.addInvoiceItemRow = () => {
-            const container = document.getElementById('invoice-items-container');
-            const productsOptions = App.data.products.map(p => 
-                `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} (مخزون: ${p.stock})</option>`
-            ).join('');
-
-            const newRow = document.createElement('div');
-            newRow.className = 'flex space-x-2 space-x-reverse items-center';
-            newRow.innerHTML = `
-                <select name="product-id" class="flex-1 p-2 border rounded-lg product-select" required onchange="calculateInvoiceTotal()">
-                    <option value="">اختر صنف...</option>
-                    ${productsOptions}
-                </select>
-                <input type="number" name="quantity" placeholder="الكمية" min="1" value="1" class="w-20 p-2 border rounded-lg text-center invoice-quantity" required onchange="calculateInvoiceTotal()">
-                <input type="text" name="price" placeholder="السعر" class="w-24 p-2 border rounded-lg text-center invoice-price bg-gray-200" readonly>
-                <button type="button" onclick="removeInvoiceItem(this)" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-            `;
-            container.appendChild(newRow);
-            lucide.createIcons();
-            calculateInvoiceTotal();
-        };
-
-        // Helper function for removing invoice item rows
-        window.removeInvoiceItem = (button) => {
-            const row = button.closest('.flex');
-            row.remove();
-            calculateInvoiceTotal();
-        };
-
-        // Helper function to calculate total dynamically
-        window.calculateInvoiceTotal = () => {
-            const rows = document.querySelectorAll('#invoice-items-container > div');
-            let grandTotal = 0;
-            const productMap = App.data.products.reduce((acc, p) => {
-                acc[p.id] = p;
-                return acc;
-            }, {});
-
-            rows.forEach(row => {
-                const productSelect = row.querySelector('.product-select');
-                const quantityInput = row.querySelector('.invoice-quantity');
-                const priceInput = row.querySelector('.invoice-price');
-
-                const productId = productSelect.value;
-                const quantity = parseInt(quantityInput.value) || 0;
-                let price = 0;
-
-                if (productId && productMap[productId]) {
-                    price = productMap[productId].price;
-                    priceInput.value = price.toFixed(2);
-                    grandTotal += price * quantity;
-                } else {
-                    priceInput.value = '0.00';
-                }
-            });
-
-            document.getElementById('invoice-total').innerText = grandTotal.toFixed(2);
-        };
-
-        /** Handle User Role Change (Admin Only) **/
-        window.handleUserRoleChange = async (userId, newRole) => {
-            if (App.userRole !== 'admin') {
-                alertUser("ليس لديك صلاحية المدير لتغيير الصلاحيات.", 'error');
-                return;
-            }
-            try {
-                const userDocRef = doc(App.db, App.getCollectionPath('users'), userId);
-                await updateDoc(userDocRef, { role: newRole });
-                alertUser(`تم تغيير صلاحية المستخدم ${userId.substring(0, 10)}... إلى ${newRole === 'admin' ? 'مدير' : 'موظف'} بنجاح.`, 'success');
-            } catch (error) {
-                console.error("Error changing user role:", error);
-                alertUser(`فشل تغيير الصلاحية: ${error.message}`, 'error');
-            }
-        };
-
-        // ====================================================================
-        //                      Dynamic Display and Statistics                   
-        // ====================================================================
-
-        function populateProductTable() {
-            const tableBody = document.getElementById('products-table-body');
-            if (!tableBody) return;
-            
-            const sortedProducts = App.data.products.sort((a, b) => a.name.localeCompare(b.name));
-
-            tableBody.innerHTML = sortedProducts.map(p => {
-                const stockClass = p.stock <= (p.lowStockThreshold || 10) ? 'text-red-600 font-bold' : 'text-green-600';
-                return `
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap">${p.name}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-gray-500">${p.code}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${p.price.toFixed(2)} ر.ق</td>
-                        <td class="px-6 py-4 whitespace-nowrap ${stockClass}">${p.stock} (${p.lowStockThreshold || 10})</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${p.warehouse}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button onclick="alertUser('وظيفة التعديل غير مفعلة في هذا الإصدار','error')" class="text-shahrazad hover:text-blue-700 ml-2">تعديل</button>
-                            <button onclick="alertUser('وظيفة الحذف غير مفعلة في هذا الإصدار','error')" class="text-red-500 hover:text-red-700">حذف</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function populateUserTable() {
-            const tableBody = document.getElementById('users-table-body');
-            if (!tableBody) return;
-
-            tableBody.innerHTML = App.data.users.map(u => {
-                const roleText = u.role === 'admin' ? 'مدير أساسي' : 'موظف';
-                const canChange = u.id !== App.userId; 
-
-                return `
-                    <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-xs">${u.id}</td>
-                        <td class="px-6 py-4 whitespace-nowrap font-medium">${roleText}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            ${canChange ? `
-                                <button onclick="handleUserRoleChange('${u.id}', '${u.role === 'admin' ? 'staff' : 'admin'}')" 
-                                    class="py-1 px-3 rounded text-white text-xs ${u.role === 'admin' ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600'}">
-                                    تغيير إلى ${u.role === 'admin' ? 'موظف' : 'مدير'}
-                                </button>
-                            ` : 'صلاحيتك الحالية'}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function renderStatistics() {
-            // ... (Statistics rendering logic remains the same) ...
-            const salesData = {}; 
-            const customerData = { distinguished: 0, regular: 0 };
-            
-            App.data.invoices.forEach(invoice => {
-                invoice.items.forEach(item => {
-                    const product = App.data.products.find(p => p.id === item.productId);
-                    if (product) {
-                        salesData[product.name] = (salesData[product.name] || 0) + item.quantity;
-                    }
-                });
-            });
-            
-            App.data.customers.forEach(c => {
-                if (c.isDistinguished) {
-                    customerData.distinguished++;
-                } else {
-                    customerData.regular++;
-                }
-            });
-
-            // 1. Sales Chart (Top 5 Products)
-            const sortedSales = Object.entries(salesData).sort(([, a], [, b]) => b - a).slice(0, 5);
-            
-            const salesCanvas = document.getElementById('salesChart');
-            if (salesCanvas) {
-                new Chart(salesCanvas.getContext('2d'), {
-                    type: 'bar',
-                    data: {
-                        labels: sortedSales.map(([name]) => name),
-                        datasets: [{
-                            label: 'الكمية المباعة',
-                            data: sortedSales.map(([, quantity]) => quantity),
-                            backgroundColor: ['#004d99', '#28a745', '#ffc107', '#dc3545', '#6f42c1'],
-                            borderRadius: 8,
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-                });
-            }
-
-            // 2. Customer Chart 
-            const customerCanvas = document.getElementById('customerChart');
-            if (customerCanvas) {
-                new Chart(customerCanvas.getContext('2d'), {
-                    type: 'pie',
-                    data: {
-                        labels: ['عملاء مميزون', 'عملاء عاديون'],
-                        datasets: [{
-                            data: [customerData.distinguished, customerData.regular],
-                            backgroundColor: ['#ff9800', '#004d99'],
-                            hoverOffset: 4
-                        }]
-                    },
-                    options: { responsive: true, plugins: { legend: { position: 'right' } } }
-                });
-            }
-        }
-        
-        function renderKPICards(totalProducts, totalInvoices, totalCustomers, lowStockCount) {
-            return `
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    ${renderKPICard('إجمالي الأصناف', totalProducts, 'box', 'bg-shahrazad')}
-                    ${renderKPICard('إجمالي الفواتير', totalInvoices, 'receipt', 'bg-green-500')}
-                    ${renderKPICard('إجمالي العملاء', totalCustomers, 'users', 'bg-purple-500')}
-                    ${renderKPICard('أصناف منخفضة', lowStockCount, 'alert-triangle', 'bg-red-500')}
-                </div>
-            `;
-        }
-
-        function renderKPICard(title, value, icon, bgColor) {
-            return `
-                <div class="card p-5 flex items-center ${bgColor} text-white shadow-lg">
-                    <div class="p-3 rounded-full bg-white bg-opacity-20 ml-4">
-                        <i data-lucide="${icon}" class="w-6 h-6"></i>
-                    </div>
-                    <div>
-                        <p class="text-sm opacity-80">${title}</p>
-                        <p class="text-3xl font-bold">${value}</p>
-                    </div>
-                </div>
-            `;
-        }
-        
-        // --- Start Application ---
-        authenticateUser().then(() => { setupAuthStateListener(); });
-    </script>
-    
-    <!-- Global Alert Box -->
-    <div id="global-alert" class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform -translate-y-20 opacity-0" role="alert">
+  <!-- شاشة تسجيل الدخول -->
+  <section id="login-section" class="auth-section">
+    <div class="auth-container">
+      <img src="images/logo.png" alt="Logo" class="logo">
+      <h1>نظام المبيعات - شهرزاد إلكتريك</h1>
+      <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" />
+      <input type="password" id="loginPassword" placeholder="كلمة المرور" />
+      <button id="loginBtn">تسجيل الدخول</button>
+      <p class="forgot">هل نسيت كلمة السر؟</p>
     </div>
-    
+  </section>
+
+  <!-- واجهة النظام -->
+  <section id="main-section" class="hidden">
+    <header class="topbar">
+      <h2>مرحباً، <span id="userName"></span></h2>
+      <button id="logoutBtn">تسجيل الخروج</button>
+    </header>
+
+    <nav class="sidebar">
+      <ul>
+        <li data-section="dashboard" class="active">📊 الإحصائيات</li>
+        <li data-section="products">📦 الأصناف</li>
+        <li data-section="warehouses">🏭 المخازن</li>
+        <li data-section="customers">👨‍💼 العملاء</li>
+        <li data-section="invoices">🧾 الفواتير</li>
+        <li data-section="alerts">⚠️ التنبيهات</li>
+        <li data-section="settings">⚙️ الإعدادات</li>
+        <li data-section="backup">💾 النسخ الاحتياطي</li>
+      </ul>
+    </nav>
+
+    <main id="content">
+      <!-- لوحة الإحصائيات -->
+      <section id="dashboard" class="content-section">
+        <h3>الإحصائيات العامة</h3>
+        <canvas id="salesChart"></canvas>
+      </section>
+
+      <!-- الأصناف -->
+      <section id="products" class="content-section hidden">
+        <h3>إدارة الأصناف</h3>
+        <button id="addProductBtn">➕ إضافة صنف جديد</button>
+        <div id="productsList"></div>
+      </section>
+
+      <!-- المخازن -->
+      <section id="warehouses" class="content-section hidden">
+        <h3>المخازن</h3>
+        <div id="warehousesList"></div>
+      </section>
+
+      <!-- العملاء -->
+      <section id="customers" class="content-section hidden">
+        <h3>العملاء</h3>
+        <div id="customersList"></div>
+      </section>
+
+      <!-- الفواتير -->
+      <section id="invoices" class="content-section hidden">
+        <h3>الفواتير</h3>
+        <button id="newInvoiceBtn">🧾 إنشاء فاتورة</button>
+        <div id="invoicesList"></div>
+      </section>
+
+      <!-- التنبيهات -->
+      <section id="alerts" class="content-section hidden">
+        <h3>التنبيهات</h3>
+        <div id="alertsList"></div>
+      </section>
+
+      <!-- الإعدادات -->
+      <section id="settings" class="content-section hidden">
+        <h3>الإعدادات العامة</h3>
+        <div>
+          <button id="changePasswordBtn">تغيير كلمة المرور</button>
+          <button id="manageUsersBtn">إدارة المستخدمين</button>
+        </div>
+      </section>
+
+      <!-- النسخ الاحتياطي -->
+      <section id="backup" class="content-section hidden">
+        <h3>النسخ الاحتياطي</h3>
+        <button id="backupBtn">💾 إنشاء نسخة احتياطية</button>
+      </section>
+    </main>
+  </section>
+
+  <!-- سكريبتات النظام -->
+  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/utils.js"></script>
+  <script type="module" src="js/database.js"></script>
+  <script type="module" src="js/products.js"></script>
+  <script type="module" src="js/invoices.js"></script>
+  <script type="module" src="js/assistant.js"></script>
+
+  <!-- تنسيقات المساعد الذكي -->
+  <style>
+    #assistant-btn {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: #004aad;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 26px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      z-index: 1000;
+    }
+
+    #assistant-chat {
+      position: fixed;
+      bottom: 90px;
+      left: 20px;
+      width: 320px;
+      height: 420px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 1000;
+    }
+
+    #assistant-chat.open { display: flex; }
+    .chat-header {
+      background: #004aad;
+      color: #fff;
+      padding: 10px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .chat-messages {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #f3f6fa;
+    }
+    .chat-input {
+      display: flex;
+      padding: 10px;
+      gap: 5px;
+      border-top: 1px solid #ddd;
+      background: #fff;
+    }
+    .chat-input input {
+      flex: 1;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    .chat-input button {
+      background: #004aad;
+      color: #fff;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .msg {
+      margin: 5px 0;
+      padding: 8px 10px;
+      border-radius: 10px;
+      max-width: 85%;
+    }
+    .msg.user {
+      background: #d1e7ff;
+      align-self: flex-end;
+    }
+    .msg.bot {
+      background: #eee;
+      align-self: flex-start;
+    }
+  </style>
 </body>
 </html>
