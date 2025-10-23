@@ -195,7 +195,7 @@
         
         // ====================================================================
         //                      Smart Assistant Unit (Gemini API Integration)       
-        // ** (Updated: Added Robust Mocking Logic for 403 API Key Error) **
+        // = ** (API Key is intentionally left empty as per environment rules) **
         // ====================================================================
 
         window.toggleAssistant = () => {
@@ -240,7 +240,8 @@
                 - العملاء وإجمالي الإنفاق: [${customerList}]
             `;
             
-            const apiKey = ""; // API key is left empty as per instructions
+            // NOTE: apiKey MUST be empty string as per environment rules.
+            const apiKey = ""; 
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = {
                 contents: [{ parts: [{ text: query }] }],
@@ -279,25 +280,24 @@
                 `);
                 
             } catch (error) {
-                console.error("Gemini API connection failed:", error);
+                console.error("Gemini API connection failed, falling back to Mocking Logic:", error);
 
                 // =========================================================
                 // START MOCKING LOGIC (Fallback for 403 Forbidden error)
-                // This ensures the assistant remains functional.
                 // =========================================================
                 
                 let mockResultText = `
-                    <p class="font-bold text-red-600 mb-2">⚠️ خطأ في الاتصال بالذكاء الاصطناعي (API Error).
-                    سأقوم بالرد آلياً اعتماداً على بيانات Firestore المحلية:</p>
+                    <p class="font-bold text-red-600 mb-2">⚠️ **خطأ في الاتصال بالذكاء الاصطناعي (403 - فشل الحقن التلقائي للمفتاح).**
+                    سأقوم بالرد آلياً الآن اعتماداً على بيانات Firestore المحلية:</p>
                 `;
 
                 const lowerQuery = query.toLowerCase();
                 
-                if (lowerQuery.includes('مخزون') || lowerQuery.includes('نقص') || lowerQuery.includes('منخفض')) {
+                if (lowerQuery.includes('مخزون') || lowerQuery.includes('نقص') || lowerQuery.includes('منخفض') || lowerQuery.includes('مخزن')) {
                     const lowStockItems = App.data.products.filter(p => p.stock <= (p.lowStockThreshold || 10));
                     
                     if (lowStockItems.length > 0) {
-                        mockResultText += `<p>هناك **${lowStockItems.length} صنف** يعاني من نقص في المخزون:</p>`;
+                        mockResultText += `<p>هناك **${lowStockItems.length} صنف** يعاني من نقص في المخزون (أقل من ${lowStockItems[0].lowStockThreshold || 10}):</p>`;
                         lowStockItems.slice(0, 3).forEach(item => { // Show top 3
                             mockResultText += `<p class="mt-1 pr-3 border-r-4 border-red-500">**${item.name}**: الكمية ${item.stock} في مخزن ${item.warehouse}.</p>`;
                         });
@@ -543,7 +543,7 @@
                                 <input type="text" id="p-code" placeholder="رمز/باركود الصنف" class="p-3 border rounded-lg" required>
                                 <input type="number" id="p-price" placeholder="سعر البيع" class="p-3 border rounded-lg" min="0" step="0.01" required>
                                 <input type="number" id="p-stock" placeholder="كمية المخزون الأولية" class="p-3 border rounded-lg" min="0" required>
-                                <select id="p-warehouse" class="p-3 border rounded-lg" required>
+                                <select type="number" id="p-warehouse" class="p-3 border rounded-lg" required>
                                     <option value="" disabled selected>اختر المخزن</option>
                                     <option value="main">المخزن الرئيسي</option>
                                     <option value="branch_a">فرع جدة</option>
@@ -598,7 +598,7 @@
                                  <label class="block text-gray-700 mb-2">العميل</label>
                                  <select id="invoice-customer" class="w-full p-3 border rounded-lg" required>
                                      <option value="" disabled selected>اختر العميل</option>
-                                     ${distinguishedCustomers.map(c => `<option value="${c.id}">${c.name} (مميز - ${c.phone})</option>`).join('')}
+                                     ${App.data.customers.map(c => `<option value="${c.id}">${c.name} (${c.isDistinguished ? 'مميز' : 'عادي'})</option>`).join('')}
                                      <option value="guest">عميل نقدي/غير مسجل</option>
                                  </select>
                              </div>
