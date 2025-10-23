@@ -195,7 +195,7 @@
         
         // ====================================================================
         //                      Smart Assistant Unit (Gemini API Integration)       
-        // ** (IMPORTANT: Updated function with improved error handling and backoff) **
+        // ** (Updated: Added Robust Mocking Logic for 403 API Key Error) **
         // ====================================================================
 
         window.toggleAssistant = () => {
@@ -251,8 +251,9 @@
                 let resultText = "عذراً، لم أتمكن من الحصول على استجابة.";
                 
                 // Exponential Backoff Retry Logic
+                let response = null;
                 for (let attempt = 0; attempt < 3; attempt++) {
-                    const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     
                     if (response.ok) {
                         const result = await response.json();
@@ -260,11 +261,10 @@
                         break; 
                     } 
                     
-                    // Specific error handling for API issues
                     if (response.status === 429) { // Too Many Requests - Retry
                         await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
                         continue;
-                    } else { // Other errors (403 Forbidden, 400 Bad Request) - Throw
+                    } else { // Other errors (403 Forbidden, 400 Bad Request) - Throw to trigger MOCKING
                         const errorBody = await response.json();
                         throw new Error(`API error: ${response.status} - ${errorBody.error?.message || response.statusText}`);
                     }
@@ -280,10 +280,53 @@
                 
             } catch (error) {
                 console.error("Gemini API connection failed:", error);
+
+                // =========================================================
+                // START MOCKING LOGIC (Fallback for 403 Forbidden error)
+                // This ensures the assistant remains functional.
+                // =========================================================
+                
+                let mockResultText = `
+                    <p class="font-bold text-red-600 mb-2">⚠️ خطأ في الاتصال بالذكاء الاصطناعي (API Error).
+                    سأقوم بالرد آلياً اعتماداً على بيانات Firestore المحلية:</p>
+                `;
+
+                const lowerQuery = query.toLowerCase();
+                
+                if (lowerQuery.includes('مخزون') || lowerQuery.includes('نقص') || lowerQuery.includes('منخفض')) {
+                    const lowStockItems = App.data.products.filter(p => p.stock <= (p.lowStockThreshold || 10));
+                    
+                    if (lowStockItems.length > 0) {
+                        mockResultText += `<p>هناك **${lowStockItems.length} صنف** يعاني من نقص في المخزون:</p>`;
+                        lowStockItems.slice(0, 3).forEach(item => { // Show top 3
+                            mockResultText += `<p class="mt-1 pr-3 border-r-4 border-red-500">**${item.name}**: الكمية ${item.stock} في مخزن ${item.warehouse}.</p>`;
+                        });
+                    } else {
+                        mockResultText += `<p>**المخزون:** جميع الأصناف تبدو جيدة ولا توجد تنبيهات نقص مخزون حالياً.</p>`;
+                    }
+                } else if (lowerQuery.includes('عميل') || lowerQuery.includes('مميز') || lowerQuery.includes('vip')) {
+                    const distinguishedCount = App.data.customers.filter(c => c.isDistinguished).length;
+                    const totalCustomers = App.data.customers.length;
+                    mockResultText += `<p>**العملاء:** لدينا **${distinguishedCount} عميل مميز (VIP)** من أصل ${totalCustomers} عميل مسجل في النظام.</p>`;
+                } else if (lowerQuery.includes('سعر') || lowerQuery.includes('أغلى')) {
+                    const mostExpensive = App.data.products.sort((a, b) => b.price - a.price)[0];
+                    if (mostExpensive) {
+                        mockResultText += `<p>**معلومات السعر:** أغلى صنف مسجل هو **${mostExpensive.name}** بسعر ${mostExpensive.price.toFixed(2)} ر.ق.</p>`;
+                    } else {
+                         mockResultText += `<p>**معلومات السعر:** لا توجد أصناف مسجلة لحساب السعر.</p>`;
+                    }
+                } else {
+                    mockResultText += `<p>**رسالة عامة:** أنا مستعد لمساعدتك في استعراض بيانات SHAHRAZAD ELECTRIC. يمكنك سؤالي عن "نقص المخزون"، "العملاء المميزون"، أو "سعر صنف معين".</p>`;
+                }
+
+                // =========================================================
+                // END MOCKING LOGIC
+                // =========================================================
+                
                 typingIndicator.remove();
                 chatBody.insertAdjacentHTML('afterbegin', `
                     <div class="flex justify-end mb-2">
-                        <div class="max-w-xs p-3 rounded-xl chat-message-ai shadow-md text-red-600">حدث خطأ في الاتصال. ${error.message}</div>
+                        <div class="max-w-xs p-3 rounded-xl chat-message-ai shadow-md">${mockResultText}</div>
                     </div>
                 `);
             }
