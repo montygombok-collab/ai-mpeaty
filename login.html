@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHAHRAZAD ELECTRIC | نظام تسجيل الدخول المتقدم</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background: linear-gradient(135deg, #004d99 0%, #002d5b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-header {
+            background: linear-gradient(135deg, #004d99 0%, #002d5b 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .text-shahrazad { color: #004d99; }
+        .bg-shahrazad { background-color: #004d99; }
+        .input-field {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            transition: all 0.3s;
+            font-size: 16px;
+        }
+        .input-field:focus {
+            border-color: #004d99;
+            box-shadow: 0 0 0 3px rgba(0, 77, 153, 0.1);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #004d99 0%, #002d5b 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 77, 153, 0.3);
+        }
+        .security-badge {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 12px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <!-- Header Section -->
+        <div class="login-header">
+            <h1 class="text-3xl font-bold mb-2">SHAHRAZAD</h1>
+            <p class="opacity-90">ELECTRIC نظام إدارة المبيعات</p>
+        </div>
+
+        <!-- Login Form -->
+        <div class="p-8">
+            <form id="loginForm" class="space-y-6">
+                <!-- Username Field -->
+                <div>
+                    <label class="block text-gray-700 mb-2 font-medium">اسم المستخدم</label>
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="username" 
+                            class="input-field pr-12"
+                            placeholder="أدخل اسم المستخدم"
+                            required
+                        >
+                        <i data-lucide="user" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                    </div>
+                </div>
+
+                <!-- Password Field -->
+                <div>
+                    <label class="block text-gray-700 mb-2 font-medium">كلمة المرور</label>
+                    <div class="relative">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            class="input-field pr-12"
+                            placeholder="أدخل كلمة المرور"
+                            required
+                        >
+                        <i data-lucide="lock" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                    </div>
+                </div>
+
+                <!-- Remember Me & Forgot Password -->
+                <div class="flex justify-between items-center">
+                    <label class="flex items-center">
+                        <input type="checkbox" class="w-4 h-4 text-shahrazad rounded focus:ring-shahrazad">
+                        <span class="mr-2 text-gray-700">تذكرني</span>
+                    </label>
+                    <a href="#" class="text-shahrazad hover:underline text-sm">نسيت كلمة المرور؟</a>
+                </div>
+
+                <!-- Login Button -->
+                <button type="submit" class="btn-primary w-full flex items-center justify-center">
+                    <i data-lucide="log-in" class="w-5 h-5 ml-2"></i>
+                    تسجيل الدخول
+                </button>
+
+                <!-- Security Badge -->
+                <div class="security-badge text-center">
+                    <div class="flex items-center justify-center mb-1">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-green-500 ml-1"></i>
+                        <span>نظام آمن ومشفر</span>
+                    </div>
+                    <p class="text-xs">جميع البيانات محمية بتقنيات التشفير المتقدمة</p>
+                </div>
+            </form>
+
+            <!-- Demo Accounts -->
+            <div class="mt-8 pt-6 border-t border-gray-200">
+                <h3 class="text-sm font-medium text-gray-700 mb-3">حسابات تجريبية:</h3>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between">
+                        <span>المدير:</span>
+                        <span class="font-mono">admin / admin123</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>موظف مبيعات:</span>
+                        <span class="font-mono">sales / sales123</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>مدير المخازن:</span>
+                        <span class="font-mono">warehouse / wh123</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner (Hidden by default) -->
+    <div id="loadingSpinner" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-shahrazad mx-auto mb-4"></div>
+            <p class="text-gray-700">جاري التحقق من بيانات الدخول...</p>
+        </div>
+    </div>
+
+    <!-- Global Alert -->
+    <div id="globalAlert" class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform -translate-y-20 opacity-0" role="alert"></div>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // Demo Users Database (In a real application, this would be on the server)
+        const users = {
+            'admin': { 
+                password: 'admin123', 
+                role: 'admin', 
+                name: 'المدير الأساسي',
+                permissions: ['all']
+            },
+            'sales': { 
+                password: 'sales123', 
+                role: 'staff', 
+                name: 'موظف المبيعات',
+                permissions: ['products', 'invoices', 'customers', 'dashboard']
+            },
+            'warehouse': { 
+                password: 'wh123', 
+                role: 'warehouse_manager', 
+                name: 'مدير المخازن',
+                permissions: ['products', 'alerts', 'dashboard']
+            }
+        };
+
+        // Login Form Handler
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Show loading spinner
+            document.getElementById('loadingSpinner').classList.remove('hidden');
+            
+            // Simulate API call delay
+            setTimeout(() => {
+                authenticateUser(username, password);
+            }, 1500);
+        });
+
+        function authenticateUser(username, password) {
+            const user = users[username];
+            
+            if (user && user.password === password) {
+                // Successful login
+                showAlert(`مرحباً بعودتك، ${user.name}!`, 'success');
+                
+                // Store user session
+                const userSession = {
+                    username: username,
+                    role: user.role,
+                    name: user.name,
+                    permissions: user.permissions,
+                    loginTime: new Date().toISOString(),
+                    token: generateToken()
+                };
+                
+                localStorage.setItem('shahrazad_user', JSON.stringify(userSession));
+                
+                // Redirect to main application after short delay
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1000);
+                
+            } else {
+                // Failed login
+                showAlert('اسم المستخدم أو كلمة المرور غير صحيحة', 'error');
+                document.getElementById('loadingSpinner').classList.add('hidden');
+            }
+        }
+
+        function generateToken() {
+            return 'shahrazad_' + Math.random().toString(36).substr(2) + Date.now().toString(36);
+        }
+
+        function showAlert(message, type) {
+            const alert = document.getElementById('globalAlert');
+            alert.textContent = message;
+            alert.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            } translate-y-0 opacity-100`;
+            
+            setTimeout(() => {
+                alert.className += ' -translate-y-20 opacity-0';
+            }, 4000);
+        }
+
+        // Check if user is already logged in
+        function checkExistingSession() {
+            const userSession = localStorage.getItem('shahrazad_user');
+            if (userSession) {
+                const user = JSON.parse(userSession);
+                // Check if session is still valid (less than 24 hours old)
+                const loginTime = new Date(user.loginTime);
+                const now = new Date();
+                const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+                
+                if (hoursDiff < 24) {
+                    // Auto-redirect to main application
+                    window.location.href = 'index.html';
+                } else {
+                    // Session expired, clear storage
+                    localStorage.removeItem('shahrazad_user');
+                }
+            }
+        }
+
+        // Check for existing session on page load
+        checkExistingSession();
+
+        // Enhanced input interactions
+        document.querySelectorAll('.input-field').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.classList.add('ring-2', 'ring-blue-200', 'rounded-lg');
+            });
+            
+            input.addEventListener('blur', function() {
+                this.parentElement.classList.remove('ring-2', 'ring-blue-200', 'rounded-lg');
+            });
+        });
+
+        // Password visibility toggle (optional enhancement)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'u') {
+                // Ctrl+U to show/hide demo accounts
+                document.querySelector('.mt-8').classList.toggle('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
