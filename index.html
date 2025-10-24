@@ -5,16 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SHAHRAZAD ELECTRIC | نظام إدارة المبيعات المتقدم</title>
     
-    <!-- Tailwind CSS for modern, responsive, and high-end corporate design -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Custom Font: Cairo for strong Arabic presentation -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Chart.js for statistics -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
     <style>
@@ -36,9 +32,6 @@
 </head>
 <body>
 
-    <!-- ==================================================================== -->
-    <!--                       Configuration and Initialization Unit (Firebase) -->
-    <!-- ==================================================================== -->
     <script type="module">
         
         // --- 1. Firebase Configuration ---
@@ -452,7 +445,6 @@
             
             return `
                 <div class="flex h-screen bg-gray-50">
-                    <!-- Sidebar -->
                     <div id="sidebar" class="flex flex-col w-64 bg-white border-l shadow-2xl p-4">
                         <div class="mb-8 text-center">
                             <h1 class="text-3xl font-extrabold text-shahrazad">SHAHRAZAD</h1>
@@ -461,10 +453,8 @@
                             <p class="text-xs text-gray-400">UID: ${App.userId ? App.userId.substring(0, 15) + '...' : 'N/A'}</p>
                         </div>
 
-                        <!-- Navigation Items -->
                         ${renderNavigation()}
                         
-                        <!-- Utilities Footer -->
                         <div class="mt-auto pt-4 border-t">
                             <button onclick="window.backupData()" id="backup-btn" class="w-full flex items-center justify-center p-3 my-2 rounded-xl bg-green-600 text-white font-semibold transition hover:bg-green-700">
                                 <i data-lucide="download" class="w-5 h-5 ml-2"></i> نسخ احتياطي
@@ -475,15 +465,12 @@
                         </div>
                     </div>
 
-                    <!-- Main Content Area -->
                     <main class="flex-1 overflow-y-auto p-8">
                         <div id="content-area" class="pb-20">
-                            <!-- Dynamic content goes here -->
                             ${App.views[App.view] ? App.views[App.view]() : DashboardView()}
                         </div>
                     </main>
 
-                    <!-- Smart Assistant Window -->
                     <div id="smart-assistant-container" class="card shadow-2xl flex flex-col hidden" 
                          style="position: fixed; bottom: 20px; left: 20px; width: 350px; height: 450px; z-index: 1000;">
                         <div onclick="window.toggleAssistant()" class="gradient-bg text-white p-3 flex justify-between items-center cursor-pointer rounded-t-xl">
@@ -491,8 +478,7 @@
                             <i data-lucide="x" class="w-5 h-5"></i>
                         </div>
                         <div id="chat-body" class="flex-1 p-3 space-y-2 overflow-y-auto flex flex-col-reverse">
-                            <!-- Messages appear here -->
-                        </div>
+                            </div>
                         <form onsubmit="event.preventDefault(); window.sendAssistantQuery()" class="p-3 border-t">
                             <div class="flex">
                                 <input type="text" id="chat-input" placeholder="اسأل عن الأصناف والمخزون..." class="flex-1 p-2 border border-gray-300 rounded-lg ml-2 focus:ring-shahrazad" />
@@ -503,7 +489,6 @@
                         </form>
                     </div>
 
-                    <!-- Floating Action Button for Assistant -->
                     <button onclick="window.toggleAssistant()" class="fixed bottom-6 left-6 w-14 h-14 rounded-full bg-yellow-500 text-white shadow-2xl hover:scale-105 transition duration-300 z-50">
                         <i data-lucide="brain" class="w-7 h-7 mx-auto"></i>
                     </button>
@@ -551,7 +536,6 @@
 
                     ${renderKPICards(totalProducts, totalInvoices, totalCustomers, lowStockCount)}
 
-                    <!-- Alerts & Quick Actions -->
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div class="card p-5 lg:col-span-2">
                             <h3 class="text-xl font-semibold mb-4 text-gray-700">تنبيهات نقص المخزون (الأصناف المنخفضة)</h3>
@@ -570,7 +554,6 @@
                         </div>
                     </div>
 
-                    <!-- Statistics Charts Area -->
                     <div class="card p-6">
                         <h3 class="text-xl font-semibold mb-6 text-gray-700">رسوم بيانية إحصائية (الأداء)</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -597,7 +580,6 @@
                 <div class="space-y-8">
                     <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إدارة الأصناف والمخازن</h2>
                     
-                    <!-- إضافة صنف جديد -->
                     <div class="card p-6">
                         <h3 class="text-xl font-semibold mb-4 text-shahrazad">إضافة صنف جديد لـ SHAHRAZAD</h3>
                         <form id="add-product-form" onsubmit="handleProductSubmit(event)">
@@ -620,7 +602,6 @@
                         </form>
                     </div>
                     
-                    <!-- جدول الأصناف -->
                     <div class="card p-6 overflow-x-auto">
                         <h3 class="text-xl font-semibold mb-4 text-gray-700">قائمة الأصناف الحالية (${App.data.products.length} صنف)</h3>
                         <table class="min-w-full divide-y divide-gray-200">
@@ -635,8 +616,7 @@
                                 </tr>
                             </thead>
                             <tbody id="products-table-body" class="bg-white divide-y divide-gray-200">
-                                <!-- Will be dynamically populated -->
-                            </tbody>
+                                </tbody>
                         </table>
                     </div>
                 </div>
@@ -656,7 +636,6 @@
                      <div class="card p-6">
                          <h3 class="text-xl font-semibold mb-4 text-shahrazad">فاتورة مبيعات جديدة</h3>
                          <form id="new-invoice-form" onsubmit="handleInvoiceSubmit(event)">
-                             <!-- Customer Selection -->
                              <div class="mb-4">
                                  <label class="block text-gray-700 mb-2">العميل</label>
                                  <select id="invoice-customer" class="w-full p-3 border rounded-lg" required>
@@ -666,11 +645,9 @@
                                  </select>
                              </div>
                              
-                             <!-- Items Details -->
                              <div class="mb-4 p-4 border rounded-lg bg-gray-50">
                                  <label class="block text-gray-700 mb-3 font-semibold">تفاصيل الأصناف</label>
                                  <div id="invoice-items-container" class="space-y-3">
-                                     <!-- First Row (Template) -->
                                      <div class="flex space-x-2 space-x-reverse items-center">
                                          <select name="product-id" class="flex-1 p-2 border rounded-lg product-select" required onchange="calculateInvoiceTotal()">
                                              <option value="">اختر صنف...</option>
@@ -686,18 +663,15 @@
                                  </button>
                              </div>
  
-                             <!-- Barcode Option -->
                              <div class="flex items-center mb-6 p-3 border rounded-lg bg-yellow-50">
                                  <input type="checkbox" id="barcode-toggle" class="w-4 h-4 text-shahrazad rounded focus:ring-shahrazad">
                                  <label for="barcode-toggle" class="mr-2 text-gray-700 font-medium">تفعيل ماسح الباركود (يضيف الصنف عبر المسح)</label>
                              </div>
 
-                             <!-- Total -->
                              <div class="text-left text-2xl font-extrabold mb-6 p-4 bg-gray-100 rounded-lg">
                                  الإجمالي النهائي: <span id="invoice-total" class="text-green-600">0.00</span> ر.ق
                              </div>
                              
-                             <!-- Completion Button -->
                              <button type="submit" class="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition">
                                  <i data-lucide="check-circle" class="w-5 h-5 ml-2 inline"></i> إتمام الفاتورة
                              </button>
@@ -715,7 +689,6 @@
                 <div class="space-y-8">
                     <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إدارة العملاء المميزين (VIP)</h2>
                     
-                    <!-- Add Customer -->
                     <div class="card p-6">
                         <h3 class="text-xl font-semibold mb-4 text-shahrazad">إضافة عميل (تحديد عميل مميز يدوي)</h3>
                         <form onsubmit="handleCustomerSubmit(event)">
@@ -734,7 +707,6 @@
                         </form>
                     </div>
 
-                    <!-- Distinguished Customers List -->
                     <div class="card p-6">
                         <h3 class="text-xl font-semibold mb-4 text-yellow-600">قائمة العملاء المميزين (${distinguished.length})</h3>
                         <div class="overflow-x-auto">
@@ -774,8 +746,7 @@
                             <p class="text-gray-500 text-sm p-4 text-center">جاري تحميل التنبيهات...</p>
                         </div>
                     </div>
-                    <!-- (Can add payment alerts, delayed invoices here) -->
-                </div>
+                    </div>
             `;
         };
 
@@ -787,7 +758,6 @@
                  <div class="space-y-8">
                      <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إعدادات وصلاحيات المستخدمين</h2>
  
-                     <!-- Change Password (Current User) -->
                      <div class="card p-6">
                          <h3 class="text-xl font-semibold mb-4 text-shahrazad">تغيير كلمة السر الخاصة بي</h3>
                          <form onsubmit="handleChangePassword(event)">
@@ -798,7 +768,6 @@
                          </form>
                      </div>
                      
-                     <!-- User Management Table (Admin Only) -->
                      <div class="card p-6 overflow-x-auto">
                          <h3 class="text-xl font-semibold mb-4 text-gray-700">قائمة مستخدمي النظام</h3>
                          <table class="min-w-full divide-y divide-gray-200">
@@ -810,8 +779,7 @@
                                  </tr>
                              </thead>
                              <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
-                                 <!-- Dynamically populated -->
-                             </tbody>
+                                 </tbody>
                          </table>
                      </div>
                  </div>
@@ -823,7 +791,6 @@
                 <div class="space-y-8">
                     <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">الإعدادات العامة لنظام SHAHRAZAD</h2>
 
-                    <!-- Barcode Option -->
                     <div class="card p-6">
                         <h3 class="text-xl font-semibold mb-4 text-shahrazad">خيار تشغيل ماسح الباركود</h3>
                         <div class="flex items-center justify-between p-3 border rounded-lg bg-yellow-50">
@@ -833,7 +800,6 @@
                         <p class="text-sm text-gray-500 mt-2">عند التفعيل، يمكن البدء في مسح الباركود مباشرة في شاشة إنشاء الفواتير.</p>
                     </div>
                     
-                    <!-- Branches and Warehouses -->
                     <div class="card p-6">
                         <h3 class="text-xl font-semibold mb-4 text-shahrazad">إعدادات الفروع والمخازن</h3>
                         <p class="text-gray-500 mb-4">هذه هي الفروع والمخازن المتاحة حالياً في النظام:</p>
@@ -1230,7 +1196,6 @@
         authenticateUser().then(() => { setupAuthStateListener(); });
     </script>
     
-    <!-- Global Alert Box -->
     <div id="global-alert" class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform -translate-y-20 opacity-0" role="alert">
     </div>
     
