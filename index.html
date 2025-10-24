@@ -15,36 +15,57 @@
 
     <style>
         /* Custom styles for SHAHRAZAD ELECTRIC identity */
-        body { font-family: 'Cairo', sans-serif; background-color: #f4f7fa; }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 0;
+        }
         .text-shahrazad { color: #004d99; } 
         .bg-shahrazad { background-color: #004d99; }
         .gradient-bg { background: linear-gradient(135deg, #004d99 0%, #002d5b 100%); }
-        .card { background-color: white; border-radius: 12px; box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); transition: transform 0.2s; }
-        .card:hover { transform: translateY(-3px); box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12); }
-        #chat-body { height: 300px; overflow-y: auto; display: flex; flex-direction: column-reverse; }
-        .chat-message-user { background-color: #dbeafe; border-bottom-right-radius: 0; }
-        .chat-message-ai { background-color: #e0f2f1; color: #004d99; border-bottom-left-radius: 0; }
-        
-        /* Print Styles */
-        @media print {
-            body > :not(#content-area) { display: none !important; }
-            #content-area { margin: 0; padding: 20px; width: 100%; height: auto !important; }
-            #global-alert { display: none !important; }
-            .print-hidden { display: none !important; }
-            .invoice-print { border: 2px solid #000; padding: 20px; margin: 0; }
-            .invoice-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .invoice-items { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            .invoice-items th, .invoice-items td { border: 1px solid #000; padding: 8px; text-align: center; }
-            .invoice-total { font-size: 18px; font-weight: bold; text-align: left; margin-top: 20px; }
+        .card { 
+            background-color: white; 
+            border-radius: 12px; 
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); 
+            transition: transform 0.2s; 
         }
-
-        /* Barcode scanner styles */
-        #barcode-scanner { transition: all 0.3s ease; }
-        #barcode-scanner.active { border: 2px solid #004d99; box-shadow: 0 0 10px rgba(0, 77, 153, 0.5); }
-        #barcode-video { border-radius: 8px; }
+        .card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.12); 
+        }
+        #chat-body { 
+            height: 300px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column-reverse; 
+        }
+        .chat-message-user { 
+            background-color: #dbeafe; 
+            border-bottom-right-radius: 0; 
+        }
+        .chat-message-ai { 
+            background-color: #e0f2f1; 
+            color: #004d99; 
+            border-bottom-left-radius: 0; 
+        }
+        
+        /* Loading animation */
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
+    <!-- Global Alert -->
+    <div id="global-alert" class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform -translate-y-20 opacity-0" role="alert"></div>
+
+    <!-- Main App Container -->
+    <div id="app-container"></div>
 
     <script type="module">
         // ====================================================================
@@ -64,46 +85,14 @@
 
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut, updatePassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, addDoc, updateDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // ====================================================================
-        // Session Management & Authentication Check
-        // ====================================================================
-        
-        function checkAuthentication() {
-            const userSession = localStorage.getItem('shahrazad_user');
-            if (!userSession) {
-                window.location.href = 'login.html';
-                return null;
-            }
-            
-            const user = JSON.parse(userSession);
-            const loginTime = new Date(user.loginTime);
-            const now = new Date();
-            const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
-            
-            if (hoursDiff >= 24) {
-                localStorage.removeItem('shahrazad_user');
-                window.location.href = 'login.html';
-                return null;
-            }
-            
-            return user;
-        }
-
-        const currentUser = checkAuthentication();
-        if (!currentUser) {
-            throw new Error('User not authenticated');
-        }
-        
         // ====================================================================
         // Global State (App)
         // ====================================================================
@@ -112,18 +101,16 @@
             db,
             auth,
             userId: null,
-            userRole: currentUser.role,
-            userSession: currentUser,
-            view: 'dashboard',
+            userRole: 'staff',
+            userSession: null,
+            view: 'loading',
             data: { 
                 products: [], 
                 customers: [], 
                 invoices: [], 
                 users: [], 
-                alerts: [], 
                 warehouses: [] 
             },
-            barcodeScanner: null,
             
             getCollectionPath(collectionName) {
                 return `artifacts/shahrazad-electric/public/data/${collectionName}`;
@@ -134,48 +121,68 @@
         // Authentication and Initialization
         // ====================================================================
         
-        async function authenticateUser() {
+        // Check authentication
+        function checkAuthentication() {
+            const userSession = localStorage.getItem('shahrazad_user');
+            if (!userSession) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            
             try {
-                await signInAnonymously(App.auth);
+                const user = JSON.parse(userSession);
+                const loginTime = new Date(user.loginTime);
+                const now = new Date();
+                const hoursDiff = (now - loginTime) / (1000 * 60 * 60);
+                
+                if (hoursDiff >= 24) {
+                    localStorage.removeItem('shahrazad_user');
+                    window.location.href = 'login.html';
+                    return null;
+                }
+                
+                return user;
             } catch (error) {
-                console.error("Firebase authentication error:", error);
-                App.view = 'auth_error';
-                render();
+                console.error('Error parsing user session:', error);
+                localStorage.removeItem('shahrazad_user');
+                window.location.href = 'login.html';
+                return null;
             }
         }
 
-        function setupAuthStateListener() {
-            onAuthStateChanged(App.auth, async (user) => {
-                if (user) {
-                    App.userId = user.uid;
-                    const userDocRef = doc(App.db, App.getCollectionPath('users'), user.uid);
-                    const userDoc = await getDoc(userDocRef);
-                    
-                    if (userDoc.exists()) {
-                        App.userRole = userDoc.data().role || 'staff';
-                    } else {
-                        App.userRole = 'staff'; 
-                        await setDoc(userDocRef, { 
-                            uid: user.uid, 
-                            role: App.userRole, 
-                            username: App.userSession.username,
-                            name: App.userSession.name,
-                            createdAt: new Date().toISOString() 
-                        }, { merge: true });
-                    }
-
-                    setupFirestoreListeners();
-                    App.view = 'dashboard'; 
-                } else {
-                    await signInAnonymously(App.auth);
-                }
-                render();
-            });
+        // Initialize authentication
+        const currentUser = checkAuthentication();
+        if (currentUser) {
+            App.userSession = currentUser;
+            App.userRole = currentUser.role;
         }
-        
+
+        // ====================================================================
+        // Core Functions
+        // ====================================================================
+
+        function alertUser(message, type) {
+            const alertBox = document.getElementById('global-alert');
+            if (!alertBox) return;
+            
+            alertBox.innerText = message;
+            alertBox.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform ${
+                type === 'success' ? 'bg-green-600' : 'bg-red-600'
+            } translate-y-0 opacity-100`;
+            
+            setTimeout(() => {
+                alertBox.className += ' -translate-y-20 opacity-0';
+            }, 5000);
+        }
+
+        window.navigateTo = (viewName) => { 
+            App.view = viewName; 
+            render(); 
+        };
+
         window.handleLogout = () => {
             localStorage.removeItem('shahrazad_user');
-            signOut(App.auth).then(async () => { 
+            signOut(App.auth).then(() => { 
                 alertUser("تم تسجيل الخروج بنجاح.", "success"); 
                 setTimeout(() => {
                     window.location.href = 'login.html';
@@ -193,382 +200,591 @@
             // Products
             onSnapshot(collection(App.db, App.getCollectionPath('products')), (snapshot) => {
                 App.data.products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                checkLowStockAlerts();
-                if (['products', 'dashboard', 'alerts', 'invoices'].includes(App.view)) render(); 
-            }, console.error);
+                if (['products', 'dashboard', 'alerts', 'invoices'].includes(App.view)) render();
+            });
 
             // Customers
             onSnapshot(collection(App.db, App.getCollectionPath('customers')), (snapshot) => {
                 App.data.customers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 if (['customers', 'invoices', 'dashboard'].includes(App.view)) render();
-            }, console.error);
+            });
             
             // Invoices
             onSnapshot(collection(App.db, App.getCollectionPath('invoices')), (snapshot) => {
                 App.data.invoices = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 if (['dashboard', 'invoices'].includes(App.view)) render();
-            }, console.error);
-            
-            // Users
-            onSnapshot(collection(App.db, App.getCollectionPath('users')), (snapshot) => {
-                App.data.users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (App.view === 'user_settings') render();
-            }, console.error);
-
-            // Warehouses
-            onSnapshot(collection(App.db, App.getCollectionPath('warehouses')), (snapshot) => {
-                App.data.warehouses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                if (['products', 'warehouses'].includes(App.view)) render();
-            }, console.error);
+            });
         }
-        
+
         // ====================================================================
-        // Invoice System - المحلول الجديد
+        // Authentication Setup
         // ====================================================================
+
+        async function authenticateUser() {
+            try {
+                await signInAnonymously(App.auth);
+            } catch (error) {
+                console.error("Firebase authentication error:", error);
+                App.view = 'auth_error';
+                render();
+            }
+        }
+
+        function setupAuthStateListener() {
+            onAuthStateChanged(App.auth, async (user) => {
+                if (user) {
+                    App.userId = user.uid;
+                    
+                    // Create or update user document
+                    const userDocRef = doc(App.db, App.getCollectionPath('users'), user.uid);
+                    const userDoc = await getDoc(userDocRef);
+                    
+                    if (userDoc.exists()) {
+                        App.userRole = userDoc.data().role || 'staff';
+                    } else {
+                        await setDoc(userDocRef, { 
+                            uid: user.uid, 
+                            role: App.userRole, 
+                            username: App.userSession?.username || 'anonymous',
+                            name: App.userSession?.name || 'مستخدم',
+                            createdAt: new Date().toISOString() 
+                        });
+                    }
+
+                    setupFirestoreListeners();
+                    App.view = 'dashboard';
+                    render();
+                } else {
+                    await signInAnonymously(App.auth);
+                }
+            });
+        }
+
+        // ====================================================================
+        // View Components
+        // ====================================================================
+
+        const LoadingView = () => `
+            <div class="min-h-screen flex items-center justify-center bg-gray-50">
+                <div class="text-center">
+                    <div class="loading-spinner rounded-full h-16 w-16 border-t-4 border-b-4 border-shahrazad mx-auto mb-4"></div>
+                    <p class="text-xl text-gray-700">جاري تحميل نظام SHAHRAZAD...</p>
+                </div>
+            </div>
+        `;
+
+        const AuthErrorView = () => `
+            <div class="min-h-screen flex items-center justify-center p-4 bg-red-100">
+                <div class="card w-full max-w-lg p-8 space-y-6 shadow-2xl border-t-4 border-red-500">
+                    <div class="text-center">
+                        <h1 class="text-4xl font-extrabold text-red-700">خطأ في المصادقة</h1>
+                        <p class="text-gray-600 mt-2">عذراً، حدث خطأ في النظام. يرجى المحاولة مرة أخرى.</p>
+                        <button onclick="window.location.reload()" class="mt-4 px-6 py-2 bg-shahrazad text-white rounded-lg hover:bg-blue-700 transition">
+                            إعادة تحميل
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const DashboardView = () => {
+            const totalProducts = App.data.products.length;
+            const totalInvoices = App.data.invoices.length;
+            const totalCustomers = App.data.customers.length;
+            const lowStockCount = App.data.products.filter(p => p.stock <= (p.lowStockThreshold || 10)).length;
+
+            return `
+                <div class="flex h-screen bg-gray-50">
+                    <!-- Sidebar -->
+                    <div class="flex flex-col w-64 bg-white border-l shadow-2xl p-4">
+                        <div class="mb-8 text-center">
+                            <h1 class="text-3xl font-extrabold text-shahrazad">SHAHRAZAD</h1>
+                            <p class="text-xs text-gray-500">ELECTRIC Sales System</p>
+                            <p class="text-xs text-gray-400 mt-2">مرحباً: <strong>${App.userSession?.name || 'مستخدم'}</strong></p>
+                            <p class="text-xs text-gray-400">الصلاحية: <strong>${App.userRole === 'admin' ? 'المدير' : 'موظف'}</strong></p>
+                        </div>
+
+                        <!-- Navigation -->
+                        <div class="space-y-2">
+                            <button onclick="navigateTo('dashboard')" class="flex items-center w-full p-3 rounded-xl font-medium bg-shahrazad text-white shadow-lg">
+                                <i data-lucide="layout-dashboard" class="w-5 h-5 ml-3"></i>
+                                <span>الرئيسية</span>
+                            </button>
+                            <button onclick="navigateTo('products')" class="flex items-center w-full p-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100">
+                                <i data-lucide="box" class="w-5 h-5 ml-3"></i>
+                                <span>إدارة الأصناف</span>
+                            </button>
+                            <button onclick="navigateTo('invoices')" class="flex items-center w-full p-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100">
+                                <i data-lucide="receipt" class="w-5 h-5 ml-3"></i>
+                                <span>إنشاء الفواتير</span>
+                            </button>
+                            <button onclick="navigateTo('customers')" class="flex items-center w-full p-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100">
+                                <i data-lucide="users" class="w-5 h-5 ml-3"></i>
+                                <span>العملاء</span>
+                            </button>
+                        </div>
+
+                        <!-- Footer Buttons -->
+                        <div class="mt-auto pt-4 border-t">
+                            <button onclick="handleLogout()" class="w-full flex items-center justify-center p-3 rounded-xl bg-red-600 text-white font-semibold transition hover:bg-red-700">
+                                <i data-lucide="log-out" class="w-5 h-5 ml-2"></i>
+                                تسجيل خروج
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="flex-1 overflow-y-auto p-8">
+                        <div class="space-y-8">
+                            <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">لوحة تحكم SHAHRAZAD ELECTRIC</h2>
+                            
+                            <!-- KPI Cards -->
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div class="card p-5 flex items-center bg-shahrazad text-white shadow-lg">
+                                    <div class="p-3 rounded-full bg-white bg-opacity-20 ml-4">
+                                        <i data-lucide="box" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm opacity-80">إجمالي الأصناف</p>
+                                        <p class="text-3xl font-bold">${totalProducts}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="card p-5 flex items-center bg-green-500 text-white shadow-lg">
+                                    <div class="p-3 rounded-full bg-white bg-opacity-20 ml-4">
+                                        <i data-lucide="receipt" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm opacity-80">إجمالي الفواتير</p>
+                                        <p class="text-3xl font-bold">${totalInvoices}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="card p-5 flex items-center bg-purple-500 text-white shadow-lg">
+                                    <div class="p-3 rounded-full bg-white bg-opacity-20 ml-4">
+                                        <i data-lucide="users" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm opacity-80">إجمالي العملاء</p>
+                                        <p class="text-3xl font-bold">${totalCustomers}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="card p-5 flex items-center bg-red-500 text-white shadow-lg">
+                                    <div class="p-3 rounded-full bg-white bg-opacity-20 ml-4">
+                                        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm opacity-80">أصناف منخفضة</p>
+                                        <p class="text-3xl font-bold">${lowStockCount}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div class="card p-5 lg:col-span-2">
+                                    <h3 class="text-xl font-semibold mb-4 text-gray-700">الأصناف منخفضة المخزون</h3>
+                                    <div class="space-y-3">
+                                        ${App.data.products.filter(p => p.stock <= (p.lowStockThreshold || 10))
+                                            .map(p => `
+                                                <div class="p-3 bg-red-100 text-red-700 rounded-lg flex justify-between items-center text-sm border-r-4 border-red-500">
+                                                    <i data-lucide="alert-triangle" class="w-4 h-4 ml-2"></i>
+                                                    <p>الصنف <strong>${p.name}</strong> منخفض. الكمية: <strong>${p.stock}</strong></p>
+                                                </div>
+                                            `).join('') || 
+                                            '<p class="text-gray-500 text-center">لا توجد أصناف منخفضة المخزون</p>'
+                                        }
+                                    </div>
+                                </div>
+                                
+                                <div class="card p-5">
+                                    <h3 class="text-xl font-semibold mb-4 text-gray-700">إجراءات سريعة</h3>
+                                    <button onclick="navigateTo('invoices')" class="w-full py-3 mb-3 rounded-lg bg-yellow-500 text-white font-medium hover:bg-yellow-600 transition flex items-center justify-center">
+                                        <i data-lucide="plus-circle" class="w-5 h-5 ml-2"></i> إنشاء فاتورة جديدة
+                                    </button>
+                                    <button onclick="navigateTo('products')" class="w-full py-3 rounded-lg bg-shahrazad text-white font-medium hover:opacity-90 transition flex items-center justify-center">
+                                        <i data-lucide="package" class="w-5 h-5 ml-2"></i> إضافة صنف جديد
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            `;
+        };
+
+        const ProductsView = () => {
+            return `
+                <div class="flex h-screen bg-gray-50">
+                    <!-- Sidebar -->
+                    <div class="flex flex-col w-64 bg-white border-l shadow-2xl p-4">
+                        <div class="mb-8 text-center">
+                            <h1 class="text-3xl font-extrabold text-shahrazad">SHAHRAZAD</h1>
+                            <p class="text-xs text-gray-500">ELECTRIC Sales System</p>
+                        </div>
+
+                        <!-- Navigation -->
+                        <div class="space-y-2">
+                            <button onclick="navigateTo('dashboard')" class="flex items-center w-full p-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100">
+                                <i data-lucide="layout-dashboard" class="w-5 h-5 ml-3"></i>
+                                <span>الرئيسية</span>
+                            </button>
+                            <button onclick="navigateTo('products')" class="flex items-center w-full p-3 rounded-xl font-medium bg-shahrazad text-white shadow-lg">
+                                <i data-lucide="box" class="w-5 h-5 ml-3"></i>
+                                <span>إدارة الأصناف</span>
+                            </button>
+                            <button onclick="navigateTo('invoices')" class="flex items-center w-full p-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100">
+                                <i data-lucide="receipt" class="w-5 h-5 ml-3"></i>
+                                <span>إنشاء الفواتير</span>
+                            </button>
+                        </div>
+
+                        <div class="mt-auto pt-4 border-t">
+                            <button onclick="handleLogout()" class="w-full flex items-center justify-center p-3 rounded-xl bg-red-600 text-white font-semibold transition hover:bg-red-700">
+                                <i data-lucide="log-out" class="w-5 h-5 ml-2"></i>
+                                تسجيل خروج
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="flex-1 overflow-y-auto p-8">
+                        <div class="space-y-8">
+                            <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إدارة الأصناف</h2>
+                            
+                            <!-- Add Product Form -->
+                            <div class="card p-6">
+                                <h3 class="text-xl font-semibold mb-4 text-shahrazad">إضافة صنف جديد</h3>
+                                <form onsubmit="handleProductSubmit(event)" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <input type="text" id="p-name" placeholder="اسم الصنف" class="p-3 border rounded-lg" required>
+                                    <input type="text" id="p-code" placeholder="رمز/باركود" class="p-3 border rounded-lg" required>
+                                    <input type="number" id="p-price" placeholder="سعر البيع" class="p-3 border rounded-lg" min="0" step="0.01" required>
+                                    <input type="number" id="p-stock" placeholder="كمية المخزون" class="p-3 border rounded-lg" min="0" required>
+                                    <input type="number" id="p-threshold" placeholder="حد التنبيه" class="p-3 border rounded-lg" min="1" value="10" required>
+                                    <button type="submit" class="col-span-2 py-3 rounded-lg bg-green-500 text-white font-semibold hover:bg-green-600 transition">
+                                        <i data-lucide="save" class="w-5 h-5 ml-2 inline"></i> حفظ الصنف
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <!-- Products Table -->
+                            <div class="card p-6 overflow-x-auto">
+                                <h3 class="text-xl font-semibold mb-4 text-gray-700">قائمة الأصناف (${App.data.products.length})</h3>
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">الاسم</th>
+                                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">الرمز</th>
+                                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">السعر</th>
+                                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">المخزون</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        ${App.data.products.map(p => `
+                                            <tr>
+                                                <td class="px-6 py-4 whitespace-nowrap">${p.name}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap">${p.code}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap">${p.price?.toFixed(2) || '0.00'} ر.ق</td>
+                                                <td class="px-6 py-4 whitespace-nowrap ${p.stock <= (p.lowStockThreshold || 10) ? 'text-red-600 font-bold' : 'text-green-600'}">
+                                                    ${p.stock}
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            `;
+        };
+
+        const InvoicesView = () => {
+            return `
+                <div class="flex h-screen bg-gray-50">
+                    <!-- Sidebar -->
+                    <div class="flex flex-col w-64 bg-white border-l shadow-2xl p-4">
+                        <div class="mb-8 text-center">
+                            <h1 class="text-3xl font-extrabold text-shahrazad">SHAHRAZAD</h1>
+                            <p class="text-xs text-gray-500">ELECTRIC Sales System</p>
+                        </div>
+
+                        <!-- Navigation -->
+                        <div class="space-y-2">
+                            <button onclick="navigateTo('dashboard')" class="flex items-center w-full p-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100">
+                                <i data-lucide="layout-dashboard" class="w-5 h-5 ml-3"></i>
+                                <span>الرئيسية</span>
+                            </button>
+                            <button onclick="navigateTo('products')" class="flex items-center w-full p-3 rounded-xl font-medium text-gray-600 hover:bg-gray-100">
+                                <i data-lucide="box" class="w-5 h-5 ml-3"></i>
+                                <span>إدارة الأصناف</span>
+                            </button>
+                            <button onclick="navigateTo('invoices')" class="flex items-center w-full p-3 rounded-xl font-medium bg-shahrazad text-white shadow-lg">
+                                <i data-lucide="receipt" class="w-5 h-5 ml-3"></i>
+                                <span>إنشاء الفواتير</span>
+                            </button>
+                        </div>
+
+                        <div class="mt-auto pt-4 border-t">
+                            <button onclick="handleLogout()" class="w-full flex items-center justify-center p-3 rounded-xl bg-red-600 text-white font-semibold transition hover:bg-red-700">
+                                <i data-lucide="log-out" class="w-5 h-5 ml-2"></i>
+                                تسجيل خروج
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <main class="flex-1 overflow-y-auto p-8">
+                        <div class="space-y-8">
+                            <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إنشاء فاتورة جديدة</h2>
+                            
+                            <!-- Invoice Form -->
+                            <div class="card p-6">
+                                <form id="invoice-form" onsubmit="handleInvoiceSubmit(event)">
+                                    <!-- Customer Selection -->
+                                    <div class="mb-6">
+                                        <label class="block text-gray-700 mb-2 font-semibold">اختر العميل</label>
+                                        <select id="invoice-customer" class="w-full p-3 border rounded-lg" required>
+                                            <option value="">اختر العميل...</option>
+                                            ${App.data.customers.map(c => 
+                                                `<option value="${c.id}">${c.name} - ${c.phone}</option>`
+                                            ).join('')}
+                                            <option value="guest">عميل نقدي/غير مسجل</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Invoice Items -->
+                                    <div class="mb-6">
+                                        <label class="block text-gray-700 mb-3 font-semibold">الأصناف</label>
+                                        <div id="invoice-items" class="space-y-3">
+                                            <!-- Items will be added here dynamically -->
+                                        </div>
+                                        <button type="button" onclick="addInvoiceItem()" class="mt-4 py-2 px-4 rounded-lg bg-shahrazad text-white hover:opacity-90 transition flex items-center">
+                                            <i data-lucide="plus" class="w-5 h-5 ml-2"></i> إضافة صنف
+                                        </button>
+                                    </div>
+
+                                    <!-- Total -->
+                                    <div class="text-left text-2xl font-extrabold mb-6 p-4 bg-gray-100 rounded-lg">
+                                        الإجمالي: <span id="invoice-total">0.00</span> ر.ق
+                                    </div>
+                                    
+                                    <!-- Submit Button -->
+                                    <button type="submit" class="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition">
+                                        <i data-lucide="check-circle" class="w-5 h-5 ml-2 inline"></i> إتمام الفاتورة
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            `;
+        };
+
+        // ====================================================================
+        // Business Logic Handlers
+        // ====================================================================
+
+        window.handleProductSubmit = async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('p-name').value;
+            const code = document.getElementById('p-code').value;
+            const price = parseFloat(document.getElementById('p-price').value);
+            const stock = parseInt(document.getElementById('p-stock').value);
+            const threshold = parseInt(document.getElementById('p-threshold').value);
+
+            try {
+                await addDoc(collection(App.db, App.getCollectionPath('products')), {
+                    name,
+                    code: code.toUpperCase(),
+                    price,
+                    stock,
+                    lowStockThreshold: threshold,
+                    createdAt: new Date().toISOString(),
+                    createdBy: App.userId
+                });
+
+                e.target.reset();
+                alertUser(`تم إضافة الصنف "${name}" بنجاح`, 'success');
+            } catch (error) {
+                console.error('Error adding product:', error);
+                alertUser('فشل إضافة الصنف', 'error');
+            }
+        };
 
         window.handleInvoiceSubmit = async (e) => {
             e.preventDefault();
-            if (!App.userId) return;
-
-            const customerId = document.getElementById('invoice-customer').value;
-            const customerName = document.getElementById('invoice-customer').options[document.getElementById('invoice-customer').selectedIndex].text;
-            const itemRows = document.querySelectorAll('#invoice-items-container > div');
             
-            let items = [];
-            let total = 0;
-            let hasError = false;
+            const customerId = document.getElementById('invoice-customer').value;
+            const customerSelect = document.getElementById('invoice-customer');
+            const customerName = customerSelect.options[customerSelect.selectedIndex].text;
 
-            // التحقق من الأصناف والكميات
-            itemRows.forEach(row => {
-                const productSelect = row.querySelector('.product-select');
-                const quantityInput = row.querySelector('.invoice-quantity');
-                const priceInput = row.querySelector('.invoice-price');
+            // Gather invoice items
+            const items = [];
+            let total = 0;
+            const itemElements = document.querySelectorAll('#invoice-items .invoice-item');
+            
+            for (const element of itemElements) {
+                const productSelect = element.querySelector('.product-select');
+                const quantityInput = element.querySelector('.quantity-input');
                 
                 const productId = productSelect.value;
-                const quantity = parseInt(quantityInput.value) || 0;
-                const price = parseFloat(priceInput.value) || 0;
-
+                const quantity = parseInt(quantityInput.value);
+                
                 if (productId && quantity > 0) {
                     const product = App.data.products.find(p => p.id === productId);
-                    if (!product) {
-                        alertUser("خطأ: الصنف المحدد غير موجود", "error");
-                        hasError = true;
-                        return;
+                    if (product) {
+                        const subtotal = product.price * quantity;
+                        items.push({
+                            productId,
+                            productName: product.name,
+                            quantity,
+                            price: product.price,
+                            subtotal
+                        });
+                        total += subtotal;
                     }
-
-                    if (product.stock < quantity) {
-                        alertUser(`خطأ: كمية "${product.name}" (${quantity}) تتجاوز المخزون (${product.stock}).`, 'error');
-                        hasError = true;
-                        return;
-                    }
-                    
-                    const subtotal = quantity * price;
-                    items.push({ 
-                        productId, 
-                        productName: product.name,
-                        quantity, 
-                        price, 
-                        subtotal 
-                    });
-                    total += subtotal;
                 }
-            });
+            }
 
-            if (hasError || items.length === 0) {
-                if (items.length === 0 && !hasError) {
-                    alertUser('الرجاء إضافة صنف واحد على الأقل للفاتورة.', 'error');
-                }
+            if (items.length === 0) {
+                alertUser('الرجاء إضافة أصناف إلى الفاتورة', 'error');
                 return;
             }
-            
-            // حالة التحميل
-            const submitButton = e.target.querySelector('button[type="submit"]');
-            const originalContent = submitButton.innerHTML;
-            submitButton.disabled = true;
-            submitButton.innerHTML = '<i data-lucide="loader-2" class="w-5 h-5 ml-2 inline animate-spin"></i> جاري معالجة الفاتورة...';
-            lucide.createIcons();
 
             try {
-                // 1. تحديث المخزون
-                const batch = writeBatch(db);
-                items.forEach(item => {
-                    const product = App.data.products.find(p => p.id === item.productId);
-                    if (product) {
-                        const productRef = doc(db, App.getCollectionPath('products'), item.productId);
-                        batch.update(productRef, { 
-                            stock: product.stock - item.quantity 
-                        });
-                    }
-                });
-                await batch.commit();
-
-                // 2. إنشاء الفاتورة
+                // Create invoice
                 const invoiceData = {
                     invoiceId: `INV-${Date.now()}`,
-                    customerId: customerId,
-                    customerName: customerName,
-                    items: items,
-                    total: total,
+                    customerId,
+                    customerName,
+                    items,
+                    total,
                     date: new Date().toISOString(),
                     processedBy: App.userId,
                     status: 'completed'
                 };
 
-                const invoiceRef = await addDoc(collection(db, App.getCollectionPath('invoices')), invoiceData);
-                
-                // 3. تحديث بيانات العميل إذا لم يكن ضيف
-                if (customerId !== 'guest') {
-                    const customerRef = doc(db, App.getCollectionPath('customers'), customerId);
-                    const customerDoc = await getDoc(customerRef);
-                    
-                    if (customerDoc.exists()) {
-                        const customerData = customerDoc.data();
-                        const newTotalSpent = (customerData.totalSpent || 0) + total;
-                        const newTotalInvoices = (customerData.totalInvoices || 0) + 1;
-                        
-                        await updateDoc(customerRef, {
-                            totalSpent: newTotalSpent,
-                            totalInvoices: newTotalInvoices,
-                            isDistinguished: newTotalSpent > 5000,
-                            lastPurchase: new Date().toISOString()
+                await addDoc(collection(App.db, App.getCollectionPath('invoices')), invoiceData);
+
+                // Update product stock
+                const batch = writeBatch(db);
+                items.forEach(item => {
+                    const product = App.data.products.find(p => p.id === item.productId);
+                    if (product) {
+                        const productRef = doc(db, App.getCollectionPath('products'), item.productId);
+                        batch.update(productRef, {
+                            stock: product.stock - item.quantity
                         });
                     }
-                }
+                });
+                await batch.commit();
 
-                // نجاح - إظهار رسالة النجاح
-                alertUser(`تم إنشاء الفاتورة بنجاح! الرقم: ${invoiceData.invoiceId} - الإجمالي: ${total.toFixed(2)} ر.ق`, 'success');
-                
-                // إعادة تعيين النموذج
-                document.getElementById('new-invoice-form').reset();
-                document.getElementById('invoice-items-container').innerHTML = `
-                    <div class="flex space-x-2 space-x-reverse items-center print:grid print:grid-cols-5 print:gap-2 print:border-b print:pb-1">
-                        <select name="product-id" class="flex-1 p-2 border rounded-lg product-select print:border-none print:p-1 print:col-span-2" required onchange="calculateInvoiceTotal()">
-                            <option value="">اختر صنف...</option>
-                            ${App.data.products.map(p => 
-                                `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} (مخزون: ${p.stock})</option>`
-                            ).join('')}
-                        </select>
-                        <input type="number" name="quantity" placeholder="الكمية" min="1" value="1" class="w-20 p-2 border rounded-lg text-center invoice-quantity print:border-none print:p-1 print:w-auto" required onchange="calculateInvoiceTotal()">
-                        <input type="text" name="price" placeholder="السعر" class="w-24 p-2 border rounded-lg text-center invoice-price bg-gray-200 print:border-none print:p-1 print:w-auto" readonly>
-                        <button type="button" onclick="removeInvoiceItem(this)" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 print:hidden"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-                    </div>
-                `;
-                calculateInvoiceTotal();
-                lucide.createIcons();
-
-                // إظهار خيارات متابعة
-                submitButton.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 ml-2 inline"></i> تمت العملية بنجاح';
-                
-                // إضافة أزرار إضافية
-                const actionDiv = document.createElement('div');
-                actionDiv.className = 'flex gap-4 mt-4 print-hidden';
-                actionDiv.innerHTML = `
-                    <button onclick="printInvoice('${invoiceRef.id}')" class="flex-1 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition flex items-center justify-center">
-                        <i data-lucide="printer" class="w-5 h-5 ml-2"></i> طباعة الفاتورة
-                    </button>
-                    <button onclick="navigateTo('invoices')" class="flex-1 py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition flex items-center justify-center">
-                        <i data-lucide="plus" class="w-5 h-5 ml-2"></i> فاتورة جديدة
-                    </button>
-                `;
-                e.target.appendChild(actionDiv);
-                lucide.createIcons();
+                alertUser(`تم إنشاء الفاتورة بنجاح! الإجمالي: ${total.toFixed(2)} ر.ق`, 'success');
+                e.target.reset();
+                document.getElementById('invoice-items').innerHTML = '';
+                document.getElementById('invoice-total').textContent = '0.00';
 
             } catch (error) {
-                console.error("Error creating invoice:", error);
-                alertUser(`فشل إنشاء الفاتورة: ${error.message}`, 'error');
-                submitButton.innerHTML = originalContent;
-                submitButton.disabled = false;
+                console.error('Error creating invoice:', error);
+                alertUser('فشل إنشاء الفاتورة', 'error');
             }
         };
 
-        // دالة الطباعة المحسنة
-        window.printInvoice = async (invoiceId) => {
-            const invoice = App.data.invoices.find(inv => inv.id === invoiceId);
-            if (!invoice) {
-                alertUser("لم يتم العثور على بيانات الفاتورة", "error");
-                return;
-            }
-
-            // إنشاء محتوى الطباعة
-            const printContent = `
-                <div class="invoice-print">
-                    <div class="invoice-header">
-                        <h1 class="text-3xl font-bold">فاتورة SHAHRAZAD ELECTRIC</h1>
-                        <p class="text-lg">رقم الفاتورة: ${invoice.invoiceId}</p>
-                        <p class="text-md">التاريخ: ${new Date(invoice.date).toLocaleDateString('ar-EG')}</p>
-                    </div>
-                    
-                    <div class="customer-info">
-                        <h3 class="text-xl font-semibold">بيانات العميل:</h3>
-                        <p>الاسم: ${invoice.customerName}</p>
-                    </div>
-                    
-                    <table class="invoice-items">
-                        <thead>
-                            <tr>
-                                <th>اسم الصنف</th>
-                                <th>الكمية</th>
-                                <th>السعر</th>
-                                <th>المجموع</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${invoice.items.map(item => `
-                                <tr>
-                                    <td>${item.productName}</td>
-                                    <td>${item.quantity}</td>
-                                    <td>${item.price.toFixed(2)} ر.ق</td>
-                                    <td>${item.subtotal.toFixed(2)} ر.ق</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    
-                    <div class="invoice-total">
-                        <h3>الإجمالي النهائي: ${invoice.total.toFixed(2)} ر.ق</h3>
-                    </div>
-                    
-                    <div class="footer">
-                        <p>شكراً لتعاملكم مع SHAHRAZAD ELECTRIC</p>
-                        <p>هاتف: 00966123456789 - البريد الإلكتروني: info@shahrazad-electric.com</p>
-                    </div>
+        window.addInvoiceItem = () => {
+            const container = document.getElementById('invoice-items');
+            const itemId = Date.now();
+            
+            const itemHTML = `
+                <div class="invoice-item flex gap-2 items-center p-3 border rounded-lg">
+                    <select class="product-select flex-1 p-2 border rounded-lg" onchange="updateInvoiceItemPrice(this)">
+                        <option value="">اختر صنف...</option>
+                        ${App.data.products.map(p => `
+                            <option value="${p.id}" data-price="${p.price}">${p.name} (${p.stock} متوفر)</option>
+                        `).join('')}
+                    </select>
+                    <input type="number" class="quantity-input w-20 p-2 border rounded-lg text-center" value="1" min="1" onchange="calculateInvoiceTotal()">
+                    <span class="price-display w-24 p-2 text-center bg-gray-100 rounded-lg">0.00</span>
+                    <button type="button" onclick="this.parentElement.remove(); calculateInvoiceTotal()" class="p-2 text-red-500 hover:text-red-700">
+                        <i data-lucide="trash-2" class="w-5 h-5"></i>
+                    </button>
                 </div>
             `;
-
-            // فتح نافذة الطباعة
-            const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html dir="rtl" lang="ar">
-                <head>
-                    <meta charset="UTF-8">
-                    <title>فاتورة ${invoice.invoiceId}</title>
-                    <style>
-                        body { font-family: 'Cairo', Arial, sans-serif; margin: 20px; }
-                        .invoice-print { border: 2px solid #000; padding: 20px; margin: 0; }
-                        .invoice-header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-                        .invoice-items { width: 100%; border-collapse: collapse; margin: 20px 0; }
-                        .invoice-items th, .invoice-items td { border: 1px solid #000; padding: 8px; text-align: center; }
-                        .invoice-total { font-size: 18px; font-weight: bold; text-align: left; margin-top: 20px; }
-                        .footer { margin-top: 30px; text-align: center; border-top: 1px solid #000; padding-top: 10px; }
-                    </style>
-                </head>
-                <body>
-                    ${printContent}
-                    <script>
-                        window.onload = function() {
-                            window.print();
-                            setTimeout(() => window.close(), 1000);
-                        }
-                    <\/script>
-                </body>
-                </html>
-            `);
-            printWindow.document.close();
-        };
-
-        // الدوال المساعدة للفواتير
-        window.addInvoiceItemRow = () => {
-            const container = document.getElementById('invoice-items-container');
-            const productsOptions = App.data.products.map(p => 
-                `<option value="${p.id}" data-price="${p.price}" data-stock="${p.stock}">${p.name} (مخزون: ${p.stock})</option>`
-            ).join('');
-
-            const newRow = document.createElement('div');
-            newRow.className = 'flex space-x-2 space-x-reverse items-center print:grid print:grid-cols-5 print:gap-2 print:border-b print:pb-1';
-            newRow.innerHTML = `
-                <select name="product-id" class="flex-1 p-2 border rounded-lg product-select print:border-none print:p-1 print:col-span-2" required onchange="calculateInvoiceTotal()">
-                    <option value="">اختر صنف...</option>
-                    ${productsOptions}
-                </select>
-                <input type="number" name="quantity" placeholder="الكمية" min="1" value="1" class="w-20 p-2 border rounded-lg text-center invoice-quantity print:border-none print:p-1 print:w-auto" required onchange="calculateInvoiceTotal()">
-                <input type="text" name="price" placeholder="السعر" class="w-24 p-2 border rounded-lg text-center invoice-price bg-gray-200 print:border-none print:p-1 print:w-auto" readonly>
-                <button type="button" onclick="removeInvoiceItem(this)" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 print:hidden"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
-            `;
-            container.appendChild(newRow);
+            
+            container.insertAdjacentHTML('beforeend', itemHTML);
             lucide.createIcons();
             calculateInvoiceTotal();
         };
 
-        window.removeInvoiceItem = (button) => {
-            const row = button.closest('.flex');
-            row.remove();
+        window.updateInvoiceItemPrice = (select) => {
+            const price = select.selectedOptions[0]?.dataset.price || 0;
+            const priceDisplay = select.parentElement.querySelector('.price-display');
+            priceDisplay.textContent = parseFloat(price).toFixed(2);
             calculateInvoiceTotal();
         };
 
         window.calculateInvoiceTotal = () => {
-            const rows = document.querySelectorAll('#invoice-items-container > div');
-            let grandTotal = 0;
-
-            rows.forEach(row => {
-                const productSelect = row.querySelector('.product-select');
-                const quantityInput = row.querySelector('.invoice-quantity');
-                const priceInput = row.querySelector('.invoice-price');
-
-                const productId = productSelect.value;
-                const quantity = parseInt(quantityInput.value) || 0;
-
-                if (productId) {
-                    const product = App.data.products.find(p => p.id === productId);
-                    if (product) {
-                        const price = product.price;
-                        priceInput.value = price.toFixed(2);
-                        grandTotal += price * quantity;
-                    }
-                }
+            let total = 0;
+            const items = document.querySelectorAll('#invoice-items .invoice-item');
+            
+            items.forEach(item => {
+                const select = item.querySelector('.product-select');
+                const quantity = parseInt(item.querySelector('.quantity-input').value) || 0;
+                const price = parseFloat(select.selectedOptions[0]?.dataset.price || 0);
+                total += price * quantity;
             });
-
-            document.getElementById('invoice-total').innerText = grandTotal.toFixed(2);
+            
+            document.getElementById('invoice-total').textContent = total.toFixed(2);
         };
 
         // ====================================================================
-        // بقية الدوال والوظائف (بدون تغيير)
+        // Main Render Function
         // ====================================================================
 
-        function checkLowStockAlerts() {
-            const lowStockProducts = App.data.products.filter(p => p.stock <= (p.lowStockThreshold || 10));
-            const alertsContainer = document.getElementById('alerts-container');
-            const alertsContainerFull = document.getElementById('alerts-container-full');
+        function render() {
+            const container = document.getElementById('app-container');
+            if (!container) return;
+
+            let content = '';
             
-            const alertHTML = lowStockProducts.length > 0
-                ? lowStockProducts.map(p => 
-                    `<div class="p-3 mb-2 bg-red-100 text-red-700 rounded-lg shadow-sm flex justify-between items-center text-sm border-r-4 border-red-500">
-                        <i data-lucide="alert-triangle" class="w-4 h-4 ml-2"></i>
-                        <p>الصنف <strong>${p.name}</strong> منخفض. الكمية: <strong>${p.stock}</strong></p>
-                    </div>`
-                ).join('')
-                : `<p class="text-gray-500 text-sm p-4 text-center">لا توجد تنبيهات نقص مخزون حالياً.</p>`;
-                
-            if (alertsContainer) alertsContainer.innerHTML = alertHTML;
-            if (alertsContainerFull) alertsContainerFull.innerHTML = alertHTML;
+            switch (App.view) {
+                case 'loading':
+                    content = LoadingView();
+                    break;
+                case 'auth_error':
+                    content = AuthErrorView();
+                    break;
+                case 'dashboard':
+                    content = DashboardView();
+                    break;
+                case 'products':
+                    content = ProductsView();
+                    break;
+                case 'invoices':
+                    content = InvoicesView();
+                    break;
+                default:
+                    content = DashboardView();
+            }
+
+            container.innerHTML = content;
             lucide.createIcons();
         }
 
-        function alertUser(message, type) {
-            const alertBox = document.getElementById('global-alert');
-            alertBox.innerText = message;
-            alertBox.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} translate-y-0 opacity-100`;
-            setTimeout(() => {
-                alertBox.className += ' -translate-y-20 opacity-0';
-            }, 5000);
-        }
-
-        window.navigateTo = (viewName) => { App.view = viewName; render(); };
-
-        // ... (بقية الدوال بدون تغيير) ...
-
         // ====================================================================
-        // بدء التطبيق
+        // Initialize Application
         // ====================================================================
-        
-        authenticateUser().then(() => { 
+
+        // Initial render
+        render();
+
+        // Start authentication
+        authenticateUser().then(() => {
             setupAuthStateListener();
         });
 
     </script>
-    
-    <div id="global-alert" class="fixed top-4 right-4 z-50 p-4 rounded-lg shadow-xl text-white transition-all duration-300 transform -translate-y-20 opacity-0" role="alert">
-    </div>
-    
 </body>
 </html>
