@@ -28,6 +28,16 @@
         #chat-body { height: 300px; overflow-y: auto; display: flex; flex-direction: column-reverse; }
         .chat-message-user { background-color: #dbeafe; border-bottom-right-radius: 0; }
         .chat-message-ai { background-color: #e0f2f1; color: #004d99; border-bottom-left-radius: 0; }
+        
+        /* Print Styles: Hide UI elements for clean receipt view when printing */
+        @media print {
+            /* Hide everything except the main content area */
+            body > :not(#content-area) { display: none !important; }
+            /* Expand content area for printing */
+            #content-area { margin: 0; padding: 20px; width: 100%; height: auto !important; }
+            /* Hide the global alert */
+            #global-alert { display: none !important; }
+        }
     </style>
 </head>
 <body>
@@ -35,7 +45,6 @@
     <script type="module">
         
         // --- 1. Firebase Configuration ---
-        // This configuration is used if not provided by Canvas
         const defaultFirebaseConfig = {
             apiKey: "AIzaSyBtc-pniRx5Mda5UW_kNqS0Zyi8zcKvdlU",
             authDomain: "shahrazad-electric.firebaseapp.com",
@@ -61,7 +70,7 @@
         const app = initializeApp(firestoreConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
-        setLogLevel('Debug'); // Enable debug logs
+        setLogLevel('Debug'); 
 
         // --- 4. Global State (App) ---
         window.App = {
@@ -73,7 +82,7 @@
             view: 'loading',
             data: { products: [], customers: [], invoices: [], users: [], alerts: [] },
             
-            // Public collection path (for products, invoices, users)
+            // Public collection path 
             getCollectionPath(collectionName) {
                 return `artifacts/${this.appId}/public/data/${collectionName}`;
             },
@@ -84,7 +93,6 @@
         // ====================================================================
         /**
          * Assistant Class (فئة المساعد)
-         * تم دمجها من assistant.js لتوفير وظائف مساعدة عامة داخل التطبيق.
          */
         class Assistant {
             constructor(name = "المساعد الرقمي") {
@@ -107,9 +115,6 @@
 
             /**
              * تنسيق التاريخ (Format Date)
-             *
-             * وظيفة بسيطة لتنسيق التاريخ الحالي إلى سلسلة نصية.
-             * @returns {string} - التاريخ المنسق.
              */
             formatCurrentDate() {
                 const now = new Date();
@@ -119,7 +124,6 @@
             }
         }
         
-        // إنشاء مثيل عالمي للمساعد لاستخدامه في عرض التاريخ
         const myAssistant = new Assistant("مساعد واجهة المستخدم");
         
         // ====================================================================
@@ -131,7 +135,6 @@
                 if (initialAuthToken) {
                     await signInWithCustomToken(App.auth, initialAuthToken);
                 } else {
-                    // Force anonymous sign-in for test mode
                     await signInAnonymously(App.auth); 
                 }
             } catch (error) {
@@ -151,15 +154,13 @@
                     if (userDoc.exists()) {
                         App.userRole = userDoc.data().role || 'staff';
                     } else {
-                        // Default 'staff' role for any new anonymously signed-in user
                         App.userRole = 'staff'; 
                         await setDoc(userDocRef, { uid: user.uid, role: App.userRole, createdAt: new Date().toISOString() }, { merge: true });
                     }
 
                     setupFirestoreListeners();
-                    App.view = 'dashboard'; // Direct routing to dashboard
+                    App.view = 'dashboard'; 
                 } else {
-                    // Re-authenticate anonymously if signed out for test continuity
                     console.log("User signed out (testing mode), re-authenticating anonymously.");
                     await signInAnonymously(App.auth);
                 }
@@ -445,7 +446,7 @@
             
             return `
                 <div class="flex h-screen bg-gray-50">
-                    <div id="sidebar" class="flex flex-col w-64 bg-white border-l shadow-2xl p-4">
+                    <div id="sidebar" class="flex flex-col w-64 bg-white border-l shadow-2xl p-4 print:hidden">
                         <div class="mb-8 text-center">
                             <h1 class="text-3xl font-extrabold text-shahrazad">SHAHRAZAD</h1>
                             <p class="text-xs text-gray-500">ELECTRIC Sales System (Test Mode)</p>
@@ -489,7 +490,7 @@
                         </form>
                     </div>
 
-                    <button onclick="window.toggleAssistant()" class="fixed bottom-6 left-6 w-14 h-14 rounded-full bg-yellow-500 text-white shadow-2xl hover:scale-105 transition duration-300 z-50">
+                    <button onclick="window.toggleAssistant()" class="fixed bottom-6 left-6 w-14 h-14 rounded-full bg-yellow-500 text-white shadow-2xl hover:scale-105 transition duration-300 z-50 print:hidden">
                         <i data-lucide="brain" class="w-7 h-7 mx-auto"></i>
                     </button>
                 </div>
@@ -631,12 +632,12 @@
 
              return `
                  <div class="space-y-8">
-                     <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2">إنشاء وإدارة فواتير SHAHRAZAD</h2>
- 
+                     <h2 class="text-3xl font-extrabold text-gray-800 border-b pb-2 print:hidden">إنشاء وإدارة فواتير SHAHRAZAD</h2>
+                     
                      <div class="card p-6">
-                         <h3 class="text-xl font-semibold mb-4 text-shahrazad">فاتورة مبيعات جديدة</h3>
+                         <h3 class="text-xl font-semibold mb-4 text-shahrazad print:hidden">فاتورة مبيعات جديدة</h3>
                          <form id="new-invoice-form" onsubmit="handleInvoiceSubmit(event)">
-                             <div class="mb-4">
+                             <div class="mb-4 print:hidden">
                                  <label class="block text-gray-700 mb-2">العميل</label>
                                  <select id="invoice-customer" class="w-full p-3 border rounded-lg" required>
                                      <option value="" disabled selected>اختر العميل</option>
@@ -645,34 +646,34 @@
                                  </select>
                              </div>
                              
-                             <div class="mb-4 p-4 border rounded-lg bg-gray-50">
-                                 <label class="block text-gray-700 mb-3 font-semibold">تفاصيل الأصناف</label>
-                                 <div id="invoice-items-container" class="space-y-3">
-                                     <div class="flex space-x-2 space-x-reverse items-center">
-                                         <select name="product-id" class="flex-1 p-2 border rounded-lg product-select" required onchange="calculateInvoiceTotal()">
+                             <div class="mb-4 p-4 border rounded-lg bg-gray-50 print:p-0 print:border-none print:bg-white">
+                                 <label class="block text-gray-700 mb-3 font-semibold print:hidden">تفاصيل الأصناف</label>
+                                 <div id="invoice-items-container" class="space-y-3 print:space-y-0">
+                                     <div class="flex space-x-2 space-x-reverse items-center print:grid print:grid-cols-5 print:gap-2 print:border-b print:pb-1">
+                                         <select name="product-id" class="flex-1 p-2 border rounded-lg product-select print:border-none print:p-1 print:col-span-2" required onchange="calculateInvoiceTotal()">
                                              <option value="">اختر صنف...</option>
                                              ${productsOptions}
                                          </select>
-                                         <input type="number" name="quantity" placeholder="الكمية" min="1" value="1" class="w-20 p-2 border rounded-lg text-center invoice-quantity" required onchange="calculateInvoiceTotal()">
-                                         <input type="text" name="price" placeholder="السعر" class="w-24 p-2 border rounded-lg text-center invoice-price bg-gray-200" readonly>
-                                         <button type="button" onclick="removeInvoiceItem(this)" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                                         <input type="number" name="quantity" placeholder="الكمية" min="1" value="1" class="w-20 p-2 border rounded-lg text-center invoice-quantity print:border-none print:p-1 print:w-auto" required onchange="calculateInvoiceTotal()">
+                                         <input type="text" name="price" placeholder="السعر" class="w-24 p-2 border rounded-lg text-center invoice-price bg-gray-200 print:border-none print:p-1 print:w-auto" readonly>
+                                         <button type="button" onclick="removeInvoiceItem(this)" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 print:hidden"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
                                      </div>
                                  </div>
-                                 <button type="button" onclick="addInvoiceItemRow()" class="mt-4 py-2 px-4 rounded-lg bg-shahrazad text-white hover:opacity-90 transition flex items-center">
+                                 <button type="button" onclick="addInvoiceItemRow()" class="mt-4 py-2 px-4 rounded-lg bg-shahrazad text-white hover:opacity-90 transition flex items-center print:hidden">
                                      <i data-lucide="plus" class="w-5 h-5 ml-2"></i> إضافة صنف آخر
                                  </button>
                              </div>
  
-                             <div class="flex items-center mb-6 p-3 border rounded-lg bg-yellow-50">
+                             <div class="flex items-center mb-6 p-3 border rounded-lg bg-yellow-50 print:hidden">
                                  <input type="checkbox" id="barcode-toggle" class="w-4 h-4 text-shahrazad rounded focus:ring-shahrazad">
                                  <label for="barcode-toggle" class="mr-2 text-gray-700 font-medium">تفعيل ماسح الباركود (يضيف الصنف عبر المسح)</label>
                              </div>
 
-                             <div class="text-left text-2xl font-extrabold mb-6 p-4 bg-gray-100 rounded-lg">
+                             <div class="text-left text-2xl font-extrabold mb-6 p-4 bg-gray-100 rounded-lg print:text-xl print:font-bold print:bg-white print:border-t print:mt-4">
                                  الإجمالي النهائي: <span id="invoice-total" class="text-green-600">0.00</span> ر.ق
                              </div>
                              
-                             <button type="submit" class="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition">
+                             <button type="submit" class="w-full py-3 rounded-lg bg-green-600 text-white font-semibold hover:bg-green-700 transition print:hidden">
                                  <i data-lucide="check-circle" class="w-5 h-5 ml-2 inline"></i> إتمام الفاتورة
                              </button>
                          </form>
@@ -896,7 +897,7 @@
             } catch (e) { console.error("Error adding customer: ", e); alertUser("فشل إضافة العميل.", 'error');}
         };
 
-        /** Invoice Completion Handler **/
+        /** Invoice Completion Handler (UPDATED FOR LOADING AND PRINT) **/
         window.handleInvoiceSubmit = async (e) => {
              e.preventDefault();
              if (!App.userId) return;
@@ -910,24 +911,31 @@
 
              // 1. Stock Check and Data Preparation
              itemRows.forEach(row => {
-                 const productId = row.querySelector('.product-select').value;
-                 const quantity = parseInt(row.querySelector('.invoice-quantity').value);
-                 const price = parseFloat(row.querySelector('.invoice-price').value);
+                 const productSelect = row.querySelector('.product-select');
+                 const quantityInput = row.querySelector('.invoice-quantity');
+                 const priceInput = row.querySelector('.invoice-price');
+                 
+                 const productId = productSelect ? productSelect.value : null;
+                 const quantity = parseInt(quantityInput ? quantityInput.value : '0');
+                 const price = parseFloat(priceInput ? priceInput.value : '0');
 
                  if (productId && quantity > 0 && price >= 0) {
                      const product = App.data.products.find(p => p.id === productId);
                      if (!product || product.stock < quantity) {
-                         alertUser(`خطأ: كمية "${product?.name || productId}" (${quantity}) تتجاوز المخزون (${product?.stock || 0}).`, 'error');
+                         const productName = product?.name || productId.substring(0, 8); 
+                         alertUser(`خطأ: كمية "${productName}" (${quantity}) تتجاوز المخزون (${product?.stock || 0}).`, 'error');
                          hasError = true;
                          return;
                      }
                      
-                     items.push({ productId, quantity, price, subtotal: quantity * price });
+                     items.push({ productId, quantity, price, subtotal: quantity * price, name: product.name });
                      total += quantity * price;
 
                      // Stock Update (in batch)
                      const productRef = doc(App.db, App.getCollectionPath('products'), productId);
-                     stockUpdateBatch.update(productRef, { stock: product.stock - quantity });
+                     if (product) {
+                        stockUpdateBatch.update(productRef, { stock: product.stock - quantity });
+                     }
                  }
              });
 
@@ -935,6 +943,13 @@
                  if (items.length === 0 && !hasError) alertUser('الرجاء إضافة صنف واحد على الأقل للفاتورة.', 'error');
                  return;
              }
+             
+             // --- Loading State ---
+             const submitButton = e.target.querySelector('button[type="submit"]');
+             submitButton.disabled = true;
+             submitButton.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 ml-2 inline animate-spin"></i> جاري الإتمام...`;
+             lucide.createIcons();
+
 
              try {
                  // 2. Commit Stock Updates
@@ -970,11 +985,23 @@
                  
                  document.getElementById('new-invoice-form').reset();
                  calculateInvoiceTotal(); 
-                 alertUser(`تم إصدار فاتورة SHAHRAZAD بنجاح. الإجمالي: ${total.toFixed(2)} ر.ق`, 'success');
-                 navigateTo('dashboard');
-             } catch (e) {
-                 console.error("Invoicing/Inventory process error: ", e);
-                 alertUser(`فشل إنشاء الفاتورة: ${e.message}`, 'error');
+                 
+                 alertUser(`تم إصدار فاتورة SHAHRAZAD بنجاح. الإجمالي: ${total.toFixed(2)} ر.ق.`, 'success');
+                 
+                 // ** FIX: Calling window.print() for receipt **
+                 window.print();
+                 
+                 // Delay navigation slightly to allow the print dialog to open
+                 setTimeout(() => navigateTo('dashboard'), 500); 
+
+             } catch (error) {
+                 console.error("Invoicing/Inventory process error: ", error);
+                 alertUser(`فشل إنشاء الفاتورة: ${error.message}`, 'error');
+             } finally {
+                 // --- Reset Loading State ---
+                 submitButton.disabled = false;
+                 submitButton.innerHTML = `<i data-lucide="check-circle" class="w-5 h-5 ml-2 inline"></i> إتمام الفاتورة`;
+                 lucide.createIcons();
              }
          };
          
@@ -986,15 +1013,15 @@
             ).join('');
 
             const newRow = document.createElement('div');
-            newRow.className = 'flex space-x-2 space-x-reverse items-center';
+            newRow.className = 'flex space-x-2 space-x-reverse items-center print:grid print:grid-cols-5 print:gap-2 print:border-b print:pb-1';
             newRow.innerHTML = `
-                <select name="product-id" class="flex-1 p-2 border rounded-lg product-select" required onchange="calculateInvoiceTotal()">
+                <select name="product-id" class="flex-1 p-2 border rounded-lg product-select print:border-none print:p-1 print:col-span-2" required onchange="calculateInvoiceTotal()">
                     <option value="">اختر صنف...</option>
                     ${productsOptions}
                 </select>
-                <input type="number" name="quantity" placeholder="الكمية" min="1" value="1" class="w-20 p-2 border rounded-lg text-center invoice-quantity" required onchange="calculateInvoiceTotal()">
-                <input type="text" name="price" placeholder="السعر" class="w-24 p-2 border rounded-lg text-center invoice-price bg-gray-200" readonly>
-                <button type="button" onclick="removeInvoiceItem(this)" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                <input type="number" name="quantity" placeholder="الكمية" min="1" value="1" class="w-20 p-2 border rounded-lg text-center invoice-quantity print:border-none print:p-1 print:w-auto" required onchange="calculateInvoiceTotal()">
+                <input type="text" name="price" placeholder="السعر" class="w-24 p-2 border rounded-lg text-center invoice-price bg-gray-200 print:border-none print:p-1 print:w-auto" readonly>
+                <button type="button" onclick="removeInvoiceItem(this)" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 print:hidden"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
             `;
             container.appendChild(newRow);
             lucide.createIcons();
@@ -1037,8 +1064,8 @@
 
             document.getElementById('invoice-total').innerText = grandTotal.toFixed(2);
         };
-
-        /** Handle User Role Change (Admin Only) **/
+        
+        // Handle User Role Change (Admin Only) - (No change)
         window.handleUserRoleChange = async (userId, newRole) => {
             if (App.userRole !== 'admin') {
                 alertUser("ليس لديك صلاحية المدير لتغيير الصلاحيات.", 'error');
@@ -1054,10 +1081,8 @@
             }
         };
 
-        // ====================================================================
-        //                      Dynamic Display and Statistics                   
-        // ====================================================================
-
+        // ... (Remaining helper functions like populateProductTable, renderStatistics, etc. are here and unchanged) ...
+        
         function populateProductTable() {
             const tableBody = document.getElementById('products-table-body');
             if (!tableBody) return;
