@@ -897,7 +897,7 @@
             } catch (e) { console.error("Error adding customer: ", e); alertUser("فشل إضافة العميل.", 'error');}
         };
 
-        /** Invoice Completion Handler (UPDATED FOR LOADING AND PRINT - V2) **/
+        /** Invoice Completion Handler (UPDATED FOR LOADING AND PRINT - V3) **/
         window.handleInvoiceSubmit = async (e) => {
              e.preventDefault();
              if (!App.userId) return;
@@ -944,17 +944,21 @@
                  return;
              }
              
-             // --- Loading State (Enhanced for visibility) ---
+             // --- Loading State: START (Guaranteed to be visible before awaiting commit) ---
              const submitButton = e.target.querySelector('button[type="submit"]');
              submitButton.disabled = true;
              // Temporarily change color to Yellow/Orange to indicate busy state
              submitButton.className = 'w-full py-3 rounded-lg bg-yellow-500 text-white font-semibold transition print:hidden'; 
-             submitButton.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 ml-2 inline animate-spin"></i> جاري الإتمام والطباعة...`;
+             submitButton.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 ml-2 inline animate-spin"></i> جاري إتمام وحفظ البيانات...`;
              lucide.createIcons();
+
+             // ** FIX 1: Yield control to browser for immediate UI repaint before heavy commit **
+             await new Promise(resolve => setTimeout(resolve, 0)); 
+             // ---------------------------------------------------------------------------------
 
 
              try {
-                 // 2. Commit Stock Updates
+                 // 2. Commit Stock Updates (Heavy async operation)
                  await stockUpdateBatch.commit();
 
                  // 3. Add Invoice
@@ -990,8 +994,18 @@
                  
                  alertUser(`تم إصدار فاتورة SHAHRAZAD بنجاح. الإجمالي: ${total.toFixed(2)} ر.ق.`, 'success');
                  
-                 // ** FIX: Calling window.print() for receipt **
-                 window.print();
+                 // --- Loading State: Printing preparation ---
+                 submitButton.className = 'w-full py-3 rounded-lg bg-blue-500 text-white font-semibold transition print:hidden'; 
+                 submitButton.innerHTML = `<i data-lucide="printer" class="w-5 h-5 ml-2 inline animate-pulse"></i> تحضير الطباعة...`;
+                 lucide.createIcons();
+
+                 // ** FIX 2: Yield control again to ensure "تحضير الطباعة" is visible before print dialog **
+                 await new Promise(resolve => {
+                    setTimeout(() => {
+                        window.print();
+                        resolve(); 
+                    }, 50); // Small 50ms delay for repaint guarantee
+                 });
                  
                  // Delay navigation for 1000ms (1 second) to ensure print dialog appears clearly
                  setTimeout(() => navigateTo('dashboard'), 1000); 
